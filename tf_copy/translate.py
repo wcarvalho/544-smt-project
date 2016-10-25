@@ -221,7 +221,7 @@ def train():
               "inf")
           print("  eval: bucket %d perplexity %.2f" % (bucket_id, eval_ppx))
         sys.stdout.flush()
-        if FLAGS.quick_and_dirty: break
+        if FLAGS.quick_and_dirty and current_step > 20: break
 
 
 def decode():
