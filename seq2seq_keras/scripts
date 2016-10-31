@@ -1,0 +1,8 @@
+# training
+python ./translate.py --data_dir ./wmt --train_dir ./cache --size=256 --num_layers=2 --max_train_data_size=2000
+
+# testing
+#python ./translate.py --decode --data_dir ./wmt --train_dir ./cache --size=256 --num_layers=2
+
+# logging
+#tensorboard --logdir=./logs
