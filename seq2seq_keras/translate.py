@@ -44,7 +44,7 @@ import tensorflow as tf
 import data_utils
 from keras.models import Sequential
 from keras.layers import RepeatVector, Input, merge
-from keras.layers.core import Dense, MaxoutDense, Activation
+from keras.layers.core import Dense, MaxoutDense, Activation, Lambda
 from keras.engine.topology import Merge
 from keras.layers.wrappers import TimeDistributed
 from keras.layers.embeddings import Embedding
@@ -53,7 +53,7 @@ from tensorflow import one_hot
 from keras.preprocessing.sequence import pad_sequences
 from keras.utils.visualize_util import plot
 from keras.models import Model
-
+from keras import backend as K
 
 tf.app.flags.DEFINE_float("learning_rate", 0.5, "Learning rate.")
 tf.app.flags.DEFINE_float("learning_rate_decay_factor", 0.99,
@@ -88,6 +88,26 @@ FLAGS = tf.app.flags.FLAGS
 _buckets = [(5, 10), (10, 15), (20, 25), (40, 50)]
 
 
+def softmax_sampling(x):
+    idx = np.random.choice(len(x), p=x)
+    ret = np.zeros_like(x)
+    ret[idx] = 1
+    return ret
+
+def decoding(model, en_input, vocab_size):
+    output = []
+    prev = np.zeros([vocab_size,1])
+    for word in en_input:
+        p = model.predict([word, prev])
+        cur = softmax(p)
+        prev = cur
+        output.append(prev)
+    return output
+
+
+
+
+
 def create_model(vocab_size, en_length, fr_length, hidden_dim):
     en = Input(shape=(en_length,), name='en_input_w')
     s = Embedding(vocab_size, 64, input_length=en_length, mask_zero=True, name='en_embed_s')(en)
@@ -103,7 +123,20 @@ def create_model(vocab_size, en_length, fr_length, hidden_dim):
     plot(model, to_file='model.png', show_shapes=True)
     return model
 
+def create_model_test(vocab_size, hidden_dim):
+    en = Input(shape=(1,), name='en_input_w')
+    s = Embedding(vocab_size, 64, input_length=1, mask_zero=True, name='en_embed_s')(en)
+    h =LSTM(hidden_dim, return_sequences=False, name='hidden_h')(s)
+    c = RepeatVector(1, name='repeated_hidden_c')(h)
 
+    prev = Input(shape=(1, vocab_size,), name='fr_input_y')
+    decode_input = merge([c, prev], mode='concat',  name='y_cat_c')
+    z = LSTM(hidden_dim, return_sequences=True, name='hidden_z')(decode_input)
+    p = TimeDistributed(Dense(vocab_size, activation='softmax'), name='prob')(z)
+    model = Model(input=[en, prev], output=p)
+    print("printing model to an image")
+    plot(model, to_file='model_test.png', show_shapes=True)
+    return model
 
 def read_data(source_path, target_path, max_size=None):
     """Read data from source and target files and put into buckets.
@@ -182,16 +215,6 @@ def train():
     print(len(bucket_train_set[0]))
     print(len(bucket_dev_set[0]))
 
-    '''for feat in bucket_train_set:
-        en, fr = feat
-        en = " ".join([vocab_en[key] for key in en])
-        fr = " ".join([vocab_fr[key] for key in fr])
-        print("===============")
-        print(en)
-        print(fr)
-        print(feat)
-
-     '''
     hidden_dim = 1000
     en_length = 20
     fr_length = 25
@@ -211,13 +234,14 @@ def train():
     print(source[0])
 
     model = create_model(vocab_size, en_length, fr_length, hidden_dim)
-
+    model_test = create_model_test(vocab_size, hidden_dim)
     model.compile(optimizer='rmsprop',
                                 loss='categorical_crossentropy')
-
+    model_test.compile(optimizer='rmsprop',
+                                loss='categorical_crossentropy')
     print(model.summary())
 
-    model.fit([source, target], target, nb_epoch=10, batch_size=32)
+    # model.fit([source, target], target, nb_epoch=10, batch_size=32)
 
 
 
