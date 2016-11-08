@@ -43,13 +43,17 @@ import tensorflow as tf
 
 import data_utils
 from keras.models import Sequential
-from keras.layers import RepeatVector
+from keras.layers import RepeatVector, Input, merge
 from keras.layers.core import Dense, MaxoutDense, Activation
+from keras.engine.topology import Merge
 from keras.layers.wrappers import TimeDistributed
 from keras.layers.embeddings import Embedding
 from keras.layers.recurrent import LSTM
 from tensorflow import one_hot
 from keras.preprocessing.sequence import pad_sequences
+from keras.utils.visualize_util import plot
+from keras.models import Model
+
 
 tf.app.flags.DEFINE_float("learning_rate", 0.5, "Learning rate.")
 tf.app.flags.DEFINE_float("learning_rate_decay_factor", 0.99,
@@ -82,6 +86,23 @@ FLAGS = tf.app.flags.FLAGS
 # We use a number of buckets and pad to the closest one for efficiency.
 # See seq2seq_model.Seq2SeqModel for details of how they work.
 _buckets = [(5, 10), (10, 15), (20, 25), (40, 50)]
+
+
+def create_model(vocab_size, en_length, fr_length, hidden_dim):
+    en = Input(shape=(en_length,), name='en_input_w')
+    s = Embedding(vocab_size, 64, input_length=en_length, mask_zero=True, name='en_embed_s')(en)
+    h =LSTM(hidden_dim, return_sequences=False, name='hidden_h')(s)
+    c = RepeatVector(fr_length, name='repeated_hidden_c')(h)
+
+    fr = Input(shape=(fr_length, vocab_size,), name='fr_input_y')
+    decode_input = merge([c, fr], mode='concat',  name='y_cat_c')
+    z = LSTM(hidden_dim, return_sequences=True, name='hidden_z')(decode_input)
+    p = TimeDistributed(Dense(vocab_size, activation='softmax'), name='prob')(z)
+    model = Model(input=[en, fr], output=p)
+    print("printing model to an image")
+    plot(model, to_file='model.png', show_shapes=True)
+    return model
+
 
 
 def read_data(source_path, target_path, max_size=None):
@@ -146,8 +167,8 @@ def train():
     print ("Finished reading data!")
 
     print("reading vocabulary")
-    vocabulary_path_en = "./wmt/vocab40000.en"
-    vocabulary_path_fr = "./wmt/vocab40000.fr"
+    vocabulary_path_en = "./wmt/vocab10000.en"
+    vocabulary_path_fr = "./wmt/vocab10000.fr"
     vocab_en, _ = data_utils.initialize_vocabulary(vocabulary_path_en)
     vocab_fr, _ = data_utils.initialize_vocabulary(vocabulary_path_fr)
     vocab_en = { vocab_en[key]:key for key in vocab_en}
@@ -189,21 +210,14 @@ def train():
     print(target.shape)
     print(source[0])
 
-    batch_input_shape = (None, en_length, vocab_size) #(nb_samples, timesteps, input_dim)
-    model = Sequential()
-    model.add(Embedding(vocab_size, 64, input_length=en_length, mask_zero=True))
-    model.add(LSTM(hidden_dim, return_sequences=False)) # encoder
-    model.add(RepeatVector(fr_length)) 
-    model.add(LSTM(1000, return_sequences=True)) # decoder
-    model.add(TimeDistributed(MaxoutDense(10000)))
-    model.add(Activation("softmax"))
+    model = create_model(vocab_size, en_length, fr_length, hidden_dim)
 
     model.compile(optimizer='rmsprop',
                                 loss='categorical_crossentropy')
 
     print(model.summary())
 
-    model.fit(source, target, nb_epoch=10, batch_size=32)
+    model.fit([source, target], target, nb_epoch=10, batch_size=32)
 
 
 
