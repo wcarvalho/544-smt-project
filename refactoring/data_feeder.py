@@ -5,6 +5,7 @@
 
 import sys
 import re
+import numpy as np
 import tensorflow as tf
 
 from tensorflow.python.platform import gfile
@@ -15,6 +16,11 @@ _GO = b"_GO"
 _EOS = b"_EOS"
 _UNK = b"_UNK"
 _START_VOCAB = [_PAD, _GO, _EOS, _UNK]
+
+PAD_ID = 0
+GO_ID = 1
+EOS_ID = 2
+UNK_ID = 3
 
 # Regular expressions used to tokenize.
 _WORD_SPLIT = re.compile(b"([.,!?\"':;)(])")
@@ -43,7 +49,56 @@ class DataFeeder:
         ''' all internal states are stored here '''
         self.vocabulary = {}
         self.vocabulary_path = vocabulary_path
+        self.data = []
         self.data_path = data_path
+        self.test_en_data_path = '/home/yiren/Documents/CS544/project/data/newstest2013.ids40000.en'
+        self.test_fr_data_path = '/home/yiren/Documents/CS544/project/data/newstest2013.ids40000.fr'
+        self.pos = 0
+        #self.buckets = buckets
+        
+        
+    def get_batch(self):
+		en = []
+		fr = []
+		for i in range(64):
+			tmp = self.data[self.pos + i]
+			tmp_en = tmp[0]
+			tmp_fr = tmp[1]
+			while(len(tmp_en) < 50):
+				tmp_en.append(_PAD)
+			tmp_en = list(reversed(tmp_en))
+			
+			tmp_fr.insert(0, _GO)
+			while(len(tmp_fr) < 50):
+				tmp_fr.append(_PAD)
+			en.append(tmp_en)
+			fr.append(tmp_fr)
+		print en
+		return [en, fr]
+        
+    def read_data(self):
+		# read from self.data_path
+		# self.data = ...
+		index_dict = {}
+		i = 0
+		en_file = gfile.GFile(self.test_en_data_path)
+		fr_file = gfile.GFile(self.test_fr_data_path)
+		for line1 in en_file:
+			line1 = line1.strip('\n').split(' ')
+			line1 = [int(x) for x in line1]
+			tmp = [line1]
+			index_dict[i] = tmp
+			i += 1
+		for j in range(i):
+			line2 = fr_file.readline()
+			line2 = line2.strip('\n').split()
+			line2 = [int(x) for x in line2]
+			index_dict[j].append(line2)
+		for index in range(len(index_dict)):
+			self.data.append(index_dict[index])
+		#print self.data
+		return
+
 
 
     def __tokenize(self,sentence):
@@ -103,13 +158,12 @@ class DataFeeder:
 			for i in range(len(rev_vocab)):
 				vocab[rev_vocab[i]] = i
 			return vocab, rev_vocab
-
-
-    def get_batch(self, batch_size=64):
-        ''' returns a batach of given size '''
-        #for i in range(64):
-        pass
-			
+	
+     
+     
+     
+     
+     
       
     def create_vocabulary(self):
 			self.__create_vocabulary(vocabulary_path, data_path, 40000,
@@ -126,5 +180,12 @@ if __name__ == "__main__":
 	vocabulary_path = sys.argv[1]
 	data_path = sys.argv[2]
 	df = DataFeeder(vocabulary_path, data_path)
-	#df.create_vocabulary()
-	df.read_vocabulary(vocabulary_path)
+	df.create_vocabulary()
+	df.read_data()
+	df.get_batch()
+	#df.read_vocabulary(vocabulary_path)
+
+
+
+
+
