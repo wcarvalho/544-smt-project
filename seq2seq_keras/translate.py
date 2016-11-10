@@ -51,7 +51,6 @@ from keras.layers.embeddings import Embedding
 from keras.layers.recurrent import LSTM
 from tensorflow import one_hot
 from keras.preprocessing.sequence import pad_sequences
-from keras.utils.visualize_util import plot
 from keras.models import Model
 from keras import backend as K
 
@@ -60,14 +59,14 @@ tf.app.flags.DEFINE_float("learning_rate_decay_factor", 0.99,
                                                     "Learning rate decays by this much.")
 tf.app.flags.DEFINE_float("max_gradient_norm", 5.0,
                                                     "Clip gradients to this norm.")
-tf.app.flags.DEFINE_integer("batch_size", 64,
+tf.app.flags.DEFINE_integer("batch_size", 32,
                                                         "Batch size to use during training.")
 tf.app.flags.DEFINE_integer("size", 1024, "Size of each model layer.")
 tf.app.flags.DEFINE_integer("num_layers", 3, "Number of layers in the model.")
 tf.app.flags.DEFINE_integer("en_vocab_size", 10000, "English vocabulary size.")
 tf.app.flags.DEFINE_integer("fr_vocab_size", 10000, "French vocabulary size.")
-tf.app.flags.DEFINE_string("data_dir", "/tmp", "Data directory")
-tf.app.flags.DEFINE_string("train_dir", "/tmp", "Training directory.")
+tf.app.flags.DEFINE_string("data_dir", "wmt", "Data directory")
+tf.app.flags.DEFINE_string("train_dir", "wmt", "Training directory.")
 tf.app.flags.DEFINE_integer("max_train_data_size", 0,
                                                         "Limit on the size of training data (0: no limit).")
 tf.app.flags.DEFINE_integer("steps_per_checkpoint", 200,
@@ -80,6 +79,7 @@ tf.app.flags.DEFINE_boolean("use_fp16", False,
                                                         "Train using fp16 instead of fp32.")
 tf.app.flags.DEFINE_boolean("quick_and_dirty", False,
                                                         "Quick & Dirty settings for fast testing")
+tf.app.flags.DEFINE_string("plot_name", None, "base name for plots")
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -119,8 +119,9 @@ def create_model(vocab_size, en_length, fr_length, hidden_dim):
     z = LSTM(hidden_dim, return_sequences=True, name='hidden_z')(decode_input)
     p = TimeDistributed(Dense(vocab_size, activation='softmax'), name='prob')(z)
     model = Model(input=[en, fr], output=p)
-    print("printing model to an image")
-    plot(model, to_file='model.png', show_shapes=True)
+    if FLAGS.plot_name is not None: 
+        print("printing model to an image")
+        plot(model, to_file=FLAGS.plot_name+'.png', show_shapes=True)
     return model
 
 def create_model_test(vocab_size, hidden_dim):
@@ -134,8 +135,9 @@ def create_model_test(vocab_size, hidden_dim):
     z = LSTM(hidden_dim, return_sequences=True, name='hidden_z')(decode_input)
     p = TimeDistributed(Dense(vocab_size, activation='softmax'), name='prob')(z)
     model = Model(input=[en, prev], output=p)
-    print("printing model to an image")
-    plot(model, to_file='model_test.png', show_shapes=True)
+    if FLAGS.plot_name is not None: 
+        # print("printing model to an image")
+        plot(model, to_file=FLAGS.plot_name+'_test.png', show_shapes=True)
     return model
 
 def read_data(source_path, target_path, max_size=None):
@@ -200,8 +202,8 @@ def train():
     print ("Finished reading data!")
 
     print("reading vocabulary")
-    vocabulary_path_en = "./wmt/vocab10000.en"
-    vocabulary_path_fr = "./wmt/vocab10000.fr"
+    vocabulary_path_en = "./"+FLAGS.data_dir+"/vocab"+str(FLAGS.en_vocab_size)+".en"
+    vocabulary_path_fr = "./"+FLAGS.data_dir+"/vocab"+str(FLAGS.fr_vocab_size)+".fr"
     vocab_en, _ = data_utils.initialize_vocabulary(vocabulary_path_en)
     vocab_fr, _ = data_utils.initialize_vocabulary(vocabulary_path_fr)
     vocab_en = { vocab_en[key]:key for key in vocab_en}
@@ -239,9 +241,9 @@ def train():
                                 loss='categorical_crossentropy')
     model_test.compile(optimizer='rmsprop',
                                 loss='categorical_crossentropy')
-    print(model.summary())
+    # print(model.summary())
 
-    # model.fit([source, target], target, nb_epoch=10, batch_size=32)
+    model.fit([source, target], target, nb_epoch=10, batch_size=FLAGS.batch_size)
 
 
 
@@ -262,6 +264,9 @@ def main(_):
         train()
 
 if __name__ == "__main__":
+    if FLAGS.plot_name is not None: 
+        from keras.utils.visualize_util import plot
+
     if FLAGS.self_test:
         self_test()
     elif FLAGS.decode:
