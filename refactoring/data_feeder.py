@@ -45,35 +45,44 @@ def get_wmt_enfr_dev_set(directory):
 
 class DataFeeder:
 
-    def __init__(self, vocabulary_path, data_path):
-        ''' all internal states are stored here '''
-        self.vocabulary = {}
-        self.vocabulary_path = vocabulary_path
-        self.data = []
-        self.data_path = data_path
-        self.test_en_data_path = '/home/yiren/Documents/CS544/project/data/newstest2013.ids40000.en'
-        self.test_fr_data_path = '/home/yiren/Documents/CS544/project/data/newstest2013.ids40000.fr'
-        self.pos = 0
+    def __init__(self, train_path, dev_path, batch_size):
+		''' all internal states are stored here '''
+		self.vocabulary = {}
+		self.data = []
+		self.pos = 0
+		self.batch_size = batch_size
+		self.max_vocabulary_size = 40000
+		self.train_path = train_path
+		self.dev_path = dev_path
+		self.fr_vocab_path = ''
+		self.en_vocab_path = ''
+		self.fr_train_ids_path = ''
+		self.en_train_ids_path = ''
+		self.fr_dev_ids_path = ''
+		self.en_dev_ids_path = ''
         #self.buckets = buckets
         
         
     def get_batch(self):
 		en = []
 		fr = []
-		for i in range(64):
+		for i in range(self.batch_size):
+			if self.pos + i > len(self.data):
+				self.pos = 0
 			tmp = self.data[self.pos + i]
 			tmp_en = tmp[0]
 			tmp_fr = tmp[1]
 			while(len(tmp_en) < 50):
-				tmp_en.append(_PAD)
+				tmp_en.append(0)
 			tmp_en = list(reversed(tmp_en))
 			
-			tmp_fr.insert(0, _GO)
+			tmp_fr.insert(0, 0)
 			while(len(tmp_fr) < 50):
-				tmp_fr.append(_PAD)
+				tmp_fr.append(0)
 			en.append(tmp_en)
 			fr.append(tmp_fr)
-		print en
+		self.pos += self.batch_size
+		#print len(en)
 		return [en, fr]
         
     def read_data(self):
@@ -81,8 +90,8 @@ class DataFeeder:
 		# self.data = ...
 		index_dict = {}
 		i = 0
-		en_file = gfile.GFile(self.test_en_data_path)
-		fr_file = gfile.GFile(self.test_fr_data_path)
+		en_file = gfile.GFile(self.en_dev_ids_path)
+		fr_file = gfile.GFile(self.fr_dev_ids_path)
 		for line1 in en_file:
 			line1 = line1.strip('\n').split(' ')
 			line1 = [int(x) for x in line1]
@@ -109,8 +118,7 @@ class DataFeeder:
 	   	return words
 
 
-    def __create_vocabulary(self, vocabulary_path, data_path, max_vocabulary_size,
-                          tokenizer=None, normalize_digits=True):
+    def create_vocabulary(self, vocabulary_path, data_path, max_vocabulary_size, tokenizer=None, normalize_digits=True):
         '''create a vocabulary and save to disk'''
         # should call __tokenize() for each line of input
         # returns a {phrase : id} dictionary and also saves it to disk
@@ -143,10 +151,9 @@ class DataFeeder:
 				
 
 
-    def __read_vocabulary(self, vocabulary_path):
+    def initialize_vocabulary(self, vocabulary_path):
         ''' originally initialize_vocabulary '''
         # reads from a vocabulary file into a dictionary
-        pass
         if not gfile.Exists(vocabulary_path):
 			raise ValueError("Vocabulary file % not find. ", vocabulary_path)
         else:
@@ -158,32 +165,53 @@ class DataFeeder:
 			for i in range(len(rev_vocab)):
 				vocab[rev_vocab[i]] = i
 			return vocab, rev_vocab
-	
-     
-     
-     
-     
-     
-      
-    def create_vocabulary(self):
-			self.__create_vocabulary(vocabulary_path, data_path, 40000,
-                          tokenizer=None, normalize_digits=False)
+
+
+    def data_to_token_ids(data_path, target_path, vocabulary_path,
+                      tokenizer=None, normalize_digits=True):
+	  if not gfile.Exists(target_path):
+		print("Tokenizing data in %s" % data_path)
+		vocab, _ = self.initialize_vocabulary(vocabulary_path)
+		with gfile.GFile(data_path, mode="rb") as data_file:
+		  with gfile.GFile(target_path, mode="w") as tokens_file:
+			counter = 0
+			for line in data_file:
+			  counter += 1
+			  if counter % 100000 == 0:
+				print("  tokenizing line %d" % counter)
+			  token_ids = sentence_to_token_ids(line, vocab, tokenizer,
+												normalize_digits)
+			  tokens_file.write(" ".join([str(tok) for tok in token_ids]) + "\n")
 		
-    def read_vocabulary(self, vocabulary_path):
-		res_vocab, res_rev_vocab = self.__read_vocabulary(vocabulary_path)
-		#print res_vocab
-		#print res_rev_vocab
-        
+    def prepare_wmt_data(data_dir, en_vocabulary_size, fr_vocabulary_size, tokenizer=None):
+	  # Create vocabularies of the appropriate sizes.
+	  self.fr_vocab_path = os.path.join(data_dir, "vocab%d.fr" % fr_vocabulary_size)
+	  self.en_vocab_path = os.path.join(data_dir, "vocab%d.en" % en_vocabulary_size)
+	  create_vocabulary(self.fr_vocab_path, self.train_path + ".fr", fr_vocabulary_size, tokenizer)
+	  create_vocabulary(self.en_vocab_path, self.train_path + ".en", en_vocabulary_size, tokenizer)
+
+	  # Create token ids for the training data.
+	  self.fr_train_ids_path = self.train_path + (".ids%d.fr" % fr_vocabulary_size)
+	  self.en_train_ids_path = self.train_path + (".ids%d.en" % en_vocabulary_size)
+	  data_to_token_ids(self.train_path + ".fr", self.fr_train_ids_path, self.fr_vocab_path, tokenizer)
+	  data_to_token_ids(self.train_path + ".en", self.en_train_ids_path, self.en_vocab_path, tokenizer)
+
+	  # Create token ids for the development data.
+	  self.fr_dev_ids_path = self.dev_path + (".ids%d.fr" % fr_vocabulary_size)
+	  self.en_dev_ids_path = self.dev_path + (".ids%d.en" % en_vocabulary_size)
+	  data_to_token_ids(self.dev_path + ".fr", self.fr_dev_ids_path, fr_vocab_path, tokenizer)
+	  data_to_token_ids(self.dev_path + ".en", self.en_dev_ids_path, en_vocab_path, tokenizer)
+
+	  return (en_train_ids_path, fr_train_ids_path, en_dev_ids_path, fr_dev_ids_path, en_vocab_path, fr_vocab_path)
         
         
 if __name__ == "__main__":
-	vocabulary_path = sys.argv[1]
-	data_path = sys.argv[2]
-	df = DataFeeder(vocabulary_path, data_path)
-	df.create_vocabulary()
+	train_path = sys.argv[1]
+	dev_path = sys.argv[2]
+	df = DataFeeder(train_path, dev_path, 64)
 	df.read_data()
-	df.get_batch()
-	#df.read_vocabulary(vocabulary_path)
+	#df.get_batch()
+	#df.read_vocabulary()
 
 
 
