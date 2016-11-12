@@ -107,11 +107,13 @@ def decoding(model, en_input, vocab_size):
 
 
 
-
+    # why are you using the same vocabulary size for both french and english words?
 def create_model(vocab_size, en_length, fr_length, hidden_dim):
     en = Input(shape=(en_length,), name='en_input_w')
     s = Embedding(vocab_size, 64, input_length=en_length, mask_zero=True, name='en_embed_s')(en)
     h =LSTM(hidden_dim, return_sequences=False, name='hidden_h')(s)
+    
+
     c = RepeatVector(fr_length, name='repeated_hidden_c')(h)
 
     fr = Input(shape=(fr_length, vocab_size,), name='fr_input_y')
@@ -120,7 +122,6 @@ def create_model(vocab_size, en_length, fr_length, hidden_dim):
     p = TimeDistributed(Dense(vocab_size, activation='softmax'), name='prob')(z)
     model = Model(input=[en, fr], output=p)
     if FLAGS.plot_name is not None: 
-        print("printing model to an image")
         plot(model, to_file=FLAGS.plot_name+'.png', show_shapes=True)
     return model
 
@@ -136,7 +137,6 @@ def create_model_test(vocab_size, hidden_dim):
     p = TimeDistributed(Dense(vocab_size, activation='softmax'), name='prob')(z)
     model = Model(input=[en, prev], output=p)
     if FLAGS.plot_name is not None: 
-        # print("printing model to an image")
         plot(model, to_file=FLAGS.plot_name+'_test.png', show_shapes=True)
     return model
 
