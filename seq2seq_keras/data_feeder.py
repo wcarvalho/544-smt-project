@@ -29,12 +29,11 @@ _DIGIT_RE = re.compile(br"\d")
 
 class DataFeeder:
 
-    def __init__(self, data_dir, prefix, vocab_size=10000, batch_size=64):
+    def __init__(self, data_dir, prefix, vocab_size=10000):
         ''' During initialization all file paths are created based on the root and prefix '''
         self.en_vocab, self.fr_vocab = {}, {}
         self.en_data, self.fr_data = [], []
         self.pos = 0
-        self.batch_size = batch_size
         self.vocab_size = vocab_size
         self.fr_raw_path = os.path.join(data_dir, prefix) + ".fr"
         self.en_raw_path = os.path.join(data_dir, prefix) + ".en"
@@ -56,10 +55,10 @@ class DataFeeder:
             self.fr_data = self.read_data(self.fr_ids_path)
 
 
-    def get_batch(self):
+    def get_batch(self, batch_size=64):
         en = []
         fr = []
-        for i in range(self.batch_size):
+        for i in range(batch_size):
             if self.pos + i > len(self.en_data):
                 self.pos = 0
             tmp_en = self.en_data[self.pos + i]
@@ -73,7 +72,7 @@ class DataFeeder:
                 tmp_fr.append(0)
             en.append(tmp_en)
             fr.append(tmp_fr)
-        self.pos += self.batch_size
+        self.pos += batch_size
         #print len(en)
         return (en, fr)
 
@@ -129,7 +128,6 @@ class DataFeeder:
             vocab_file = gfile.GFile(vocabulary_path, mode= "wb")
             for w in vocab_list:
                 vocab_file.write(w + b"\n")
-
 
 
     def read_vocabulary(self, vocabulary_path):
@@ -206,9 +204,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
     print(args)
 
+    # add your testing code here
     df = DataFeeder(args.data_dir, args.prefix, args.vocab_size)
-    for i in range(10):
-        en, fr = df.get_batch()
+    en, fr = df.get_batch(84)
+    print("Requested batch size: %d" % 84)
+    print("English batch size %d" % len(en))
+    print("French batch size %d" % len(fr))
 
 
 
