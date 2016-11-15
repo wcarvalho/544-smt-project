@@ -29,7 +29,7 @@ _DIGIT_RE = re.compile(br"\d")
 
 class DataFeeder:
 
-    def __init__(self, data_dir, prefix, vocab_size=10000):
+    def __init__(self, data_dir, prefix, vocab_size=10000, max_num_samples=1000000):
         ''' During initialization all file paths are created based on the root and prefix '''
         self.en_vocab, self.fr_vocab = {}, {}
         self.en_data, self.fr_data = [], []
@@ -53,9 +53,9 @@ class DataFeeder:
             self.fr_vocab, _ = self.read_vocabulary(self.fr_vocab_path)
         print("start reading data... ")
         if not self.en_data:
-            self.en_data = self.read_data(self.en_ids_path)
+            self.en_data = self.read_data(self.en_ids_path, max_num_samples)
         if not self.fr_data:
-            self.fr_data = self.read_data(self.fr_ids_path)
+            self.fr_data = self.read_data(self.fr_ids_path, max_num_samples)
 
 
     def get_batch(self, batch_size=64):
@@ -80,7 +80,7 @@ class DataFeeder:
         return (en, fr)
 
 
-    def read_data(self, ids_path):
+    def read_data(self, ids_path, max_num_samples):
         # read from self.data_path
         # self.data = ...
         output = []
@@ -93,6 +93,8 @@ class DataFeeder:
             counter += 1
             if counter % 10000 == 0:
                 print ("%d lines read" % counter)
+            if counter >= max_num_samples:
+                break
         return output
 
 
@@ -212,7 +214,10 @@ if __name__ == "__main__":
     print(args)
 
     # add your testing code here
-    df = DataFeeder(args.data_dir, args.prefix, args.vocab_size)
+    df = DataFeeder(args.data_dir, args.prefix, args.vocab_size, 1000000)
+    print("English data size %d" % len(df.en_data))
+    print("French data size %d" % len(df.fr_data))
+
     en, fr = df.get_batch(84)
     print("Requested batch size: %d" % 84)
     print("English batch size %d" % len(en))
