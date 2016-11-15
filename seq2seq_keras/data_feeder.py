@@ -41,14 +41,17 @@ class DataFeeder:
         self.en_vocab_path = os.path.join(data_dir, "vocab%d" % vocab_size) + ".en"
         self.fr_ids_path = os.path.join(data_dir, prefix) + ".ids%d" % vocab_size + ".fr"
         self.en_ids_path = os.path.join(data_dir, prefix) + ".ids%d" % vocab_size + ".en"
+        print("start preparing data...")
         self.prepare_data()
         # as a side effect of preparing data, self.data and self.vocabulary should've been
         # initialized. If they are empty, it means that all the temporary files exist already
         # and nothing has been done, so we need to read from the files manually.
+        print("start reading vocabulary... ")
         if not self.en_vocab:
             self.en_vocab, _ = self.read_vocabulary(self.en_vocab_path)
         if not self.fr_vocab:
             self.fr_vocab, _ = self.read_vocabulary(self.fr_vocab_path)
+        print("start reading data... ")
         if not self.en_data:
             self.en_data = self.read_data(self.en_ids_path)
         if not self.fr_data:
@@ -82,10 +85,14 @@ class DataFeeder:
         # self.data = ...
         output = []
         file = gfile.GFile(ids_path)
+        counter = 0
         for line in file:
             line = line.strip('\n').split(' ')
             line = [int(x) for x in line]
             output.append(line)
+            counter += 1
+            if counter % 10000 == 0:
+                print ("%d lines read" % counter)
         return output
 
 
