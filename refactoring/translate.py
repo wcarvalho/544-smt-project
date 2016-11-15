@@ -1,6 +1,3 @@
-from data_feeder import DataFeeder
-from seq_models import Seq2SeqModel
-
 class Seq2SeqTrainer:
 
     def __init__(self):
