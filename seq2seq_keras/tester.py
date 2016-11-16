@@ -15,7 +15,10 @@ class SMT_Tester(object):
     self._build_encoder(en_input_length, hidden_dim, en_vocab_size, embedding_size)
     self._build_decoder(hidden_dim, embedding_size)
     self._build_fr_word_embedder(fr_vocab_size, embedding_size)
-    
+
+  def load_weights(self):
+    raise Exception(not_implemented("load_weights"))
+
   def _build_encoder(self, input_length, hidden_dim, vocab_size, embedding_size=64):
     en = Input(shape=(input_length,), name='en_input_w')
     s = Embedding(vocab_size, embedding_size, input_length=input_length, name='en_embed_s')(en)
@@ -35,7 +38,7 @@ class SMT_Tester(object):
     fr_embedded = Embedding(vocab_size, embedding_size, input_length=1, name='fr_embedded')(fr_one_hot)
     self.fr_embedder = Model([fr_one_hot], fr_embedded)
     return self.fr_embedder
-  
+
   def set_recurrent_h(self, x): self.recurrent_h = x
 
   def encode(self, input_sentence):
@@ -59,7 +62,7 @@ class SMT_Tester(object):
     return best
 
   def mass_decode(self, word_indices, best_k = 50)
-    raise Exception("This has not yet been implemented!")
+    raise Exception(not_implemented("mass_decode"))
 
 
 def array2indexedtuple(array): 
@@ -68,3 +71,5 @@ def array2indexedtuple(array):
 def get_bestN(array, N):
   indexed_array = array2indexedtuple(array)
   return sorted(indexed_array, key=lambda x: x[1])[:N]
+
+def not_implemented(name): return "'"+name+"' has not yet been implemented!"
