@@ -39,8 +39,7 @@ from keras.preprocessing.sequence import pad_sequences
 from tensorflow import one_hot
 
 # FIXME: this is sloppy, whoever did this
-from seq2seq_keras.data_feeder import *
-
+from data_feeder import *
 from tester import SMT_Tester
 
 tf.app.flags.DEFINE_float("learning_rate", 0.5, "Learning rate.")
@@ -144,6 +143,14 @@ def decode(en_sentences):
     en_length, hidden_dim = 40, 1000
     tester = SMT_Tester(en_length, hidden_dim, FLAGS.vocab_size, FLAGS.vocab_size, FLAGS.embedding_size)
     output = []
+    for sentence in en_sentences:
+        tester.encode(sentence)
+        terminated = False
+        words = tester.decode()
+        # while not terminated:
+        #     for word in words:
+        #         tester.decode()
+        
     # prev = np.zeros([vocab_size,1])
     # for word in en_input:
     #     p = model.predict([word, prev])
