@@ -144,16 +144,17 @@ def train():
             # optional: print("saving a model...")
             model_train.save(os.path.join(FLAGS.train_dir, "itr_%d.chkpoint" % (i+1)), overwrite=False)
 
-# FIXME
-# * how will we give input to decoder? text file? command line?
-def decode():
+    # use best weights for testing
+    test()
+
+
+def test()
     test_feeder = DataFeeder(data_dir=FLAGS.data_dir,
                                          prefix="newstest2013",
                                          vocab_size=FLAGS.vocab_size)
 
     tester = SMT_Tester(en_input_length, hidden_dim, en_vocab_size, fr_vocab_size, embedding_size)
     tester.load_weights()
-
     # source, target = train_feeder.get_batch(FLAGS.batch_size, en_length=en_length, fr_length=fr_length)
 
     for sentence in sentences:
@@ -163,6 +164,11 @@ def decode():
         probabilties = tester.mass_decode([word_indx])
         # output is a french sentence which will be used 
     # once done, 
+
+
+# FIXME
+# * how will we give input to decoder? text file? command line?
+def decode():
 
 
     # for i in range(1000):
