@@ -60,7 +60,7 @@ class SMT_Tester(object):
 
   def mass_decode(self, word_indices, best_k = 50)
     raise Exception("This has not yet been implemented!")
-    for word in 
+
 
 def array2indexedtuple(array): 
   return [val for val in enumerate(array[0])]
