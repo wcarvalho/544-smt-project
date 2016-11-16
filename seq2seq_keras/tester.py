@@ -54,15 +54,18 @@ class SMT_Tester(object):
     embedded = self.fr_embedder.predict(indx_array)[0]
     return np.array([np.concatenate([self.recurrent_h,embedded],axis=-1)])
 
-  def decode(self, best_k=50, word_indx = None):
+  def decode(self, word_indx = None):
     if word_indx is None: batch = self._make_initial_batch()
     else: batch = self._make_regular_batch(word_indx)
     probabilties = self.decoder.predict(batch)
-    best = get_bestN(probabilties, best_k)
-    return best
+    return probabilties
 
-  def mass_decode(self, word_indices, best_k = 50):
-    raise Exception(not_implemented("mass_decode"))
+  def mass_decode(self, word_indices):
+    probabilties = []
+    for indx in word_indices:
+      probabilties.append(self.decode(indx))
+
+    return probabilties
 
 
 def array2indexedtuple(array): 

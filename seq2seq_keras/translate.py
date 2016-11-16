@@ -124,30 +124,59 @@ def train():
     model_test.compile(optimizer='rmsprop', loss='categorical_crossentropy')
     print(model_train.summary())
 
-    for i in range(1000):
+    niterations = 10000
+    frequency = 100
+    for i in range(niterations):
         source, target = train_feeder.get_batch(FLAGS.batch_size, en_length=en_length, fr_length=fr_length)
         source, target = np.asarray(source), np.asarray(target)
         target = one_hot(target, FLAGS.vocab_size) # embedding handles one hot coding, so source doesn't need it.
         loss = model_train.train_on_batch([source, target], target)
         print("Iteration: %d | Loss = %.3f" % (i+1, loss))
 
-        if (i+1) % 100 == 0:
+        if (i+1) % frequency == 0:
             # TODO: should also run a validation/test
             # 1. somehow copy weights from train model to test model
             # 2. model_test.test_on_batch(...)
-            print("saving a model...")
+            
+            # do_validation
+            # do_testing
+
+            # optional: print("saving a model...")
             model_train.save(os.path.join(FLAGS.train_dir, "itr_%d.chkpoint" % (i+1)), overwrite=False)
 
 # FIXME
 # * how will we give input to decoder? text file? command line?
-def decode(en_sentences):
-    # FIXME: make below flags
-    en_length, hidden_dim = 40, 1000
-    tester = SMT_Tester(en_length, hidden_dim, FLAGS.vocab_size, FLAGS.vocab_size, FLAGS.embedding_size)
-    output = []
-    for sentence in en_sentences:
+def decode():
+    test_feeder = DataFeeder(data_dir=FLAGS.data_dir,
+                                         prefix="newstest2013",
+                                         vocab_size=FLAGS.vocab_size)
+
+    tester = SMT_Tester(en_input_length, hidden_dim, en_vocab_size, fr_vocab_size, embedding_size)
+    tester.load_weights()
+
+    # source, target = train_feeder.get_batch(FLAGS.batch_size, en_length=en_length, fr_length=fr_length)
+
+    for sentence in sentences:
         tester.encode(sentence)
-        words = tester.decode()
+        # Beam Search
+        probabilties = tester.decode()
+        probabilties = tester.mass_decode([word_indx])
+        # output is a french sentence which will be used 
+    # once done, 
+
+
+    # for i in range(1000):
+    #     source, target = train_feeder.get_batch(FLAGS.batch_size, en_length=en_length, fr_length=fr_length)
+    #     print source
+    #     print target
+    # FIXME: make below flags
+    # en_length, hidden_dim = 40, 1000
+    # tester = SMT_Tester(en_length, hidden_dim, FLAGS.vocab_size, FLAGS.vocab_size, FLAGS.embedding_size)
+    # output = []
+    # for sentence in en_sentences:
+    #     tester.encode(sentence)
+    #     words = tester.decode()
+    #     print words
         
 
         # terminated = False
