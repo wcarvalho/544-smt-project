@@ -115,7 +115,6 @@ def one_hot(a, vocab_size):
 
 
 def train():
-
     # Prepare WMT data
     train_feeder = DataFeeder(data_dir=FLAGS.data_dir,
                                           prefix="giga-fren.release2",
@@ -139,10 +138,11 @@ def train():
         source, target = np.asarray(source), np.asarray(target)
         target = one_hot(target, FLAGS.vocab_size)
         model_train.train_on_batch([source, target], target)
-        if i+1 % 1000 == 0:
+        if i+1 % 100 == 0:
             # TODO: should also run a validation/test
             print("%d iterations" % (i+1))
             model_train.save(FLAGS.train_dir + "/itr_%d.chkpoint" % (i+1), overwrite=False)
+
 
 if __name__ == "__main__":
     if FLAGS.plot_name is not None: 
