@@ -37,7 +37,11 @@ from keras.layers.wrappers import TimeDistributed
 from keras.models import Model
 from keras.preprocessing.sequence import pad_sequences
 from tensorflow import one_hot
+
+# FIXME: this is sloppy, whoever did this
 from seq2seq_keras.data_feeder import *
+
+from tester import SMT_Tester
 
 tf.app.flags.DEFINE_float("learning_rate", 0.5, "Learning rate.")
 tf.app.flags.DEFINE_float("learning_rate_decay_factor", 0.99, "Learning rate decays by this much.")
@@ -45,6 +49,7 @@ tf.app.flags.DEFINE_float("max_gradient_norm", 5.0, "Clip gradients to this norm
 tf.app.flags.DEFINE_integer("batch_size", 32, "Batch size to use during training.")
 tf.app.flags.DEFINE_integer("size", 1024, "Size of each model layer.")
 tf.app.flags.DEFINE_integer("num_layers", 3, "Number of layers in the model.")
+tf.app.flags.DEFINE_integer("embedding_size", 64, "Size of word embedding")
 tf.app.flags.DEFINE_integer("vocab_size", 10000, "Vocabulary size.")
 tf.app.flags.DEFINE_string("data_dir", "wmt", "Data directory")
 tf.app.flags.DEFINE_string("train_dir", "wmt", "Training directory.")
@@ -65,20 +70,9 @@ def softmax_sampling(x):
     return ret
 
 
-def decoding(model, en_input, vocab_size):
-    output = []
-    prev = np.zeros([vocab_size,1])
-    for word in en_input:
-        p = model.predict([word, prev])
-        cur = softmax_sampling(p)
-        prev = cur
-        output.append(prev)
-    return output
-
-
 def create_model(vocab_size, en_length, fr_length, hidden_dim):
     en = Input(shape=(en_length,), name='en_input_w')
-    s = Embedding(vocab_size, 64, input_length=en_length, mask_zero=True, name='en_embed_s')(en)
+    s = Embedding(vocab_size, FLAGS.embedding_size, input_length=en_length, mask_zero=True, name='en_embed_s')(en)
     h =LSTM(hidden_dim, return_sequences=False, name='hidden_h')(s)
     
 
@@ -96,7 +90,7 @@ def create_model(vocab_size, en_length, fr_length, hidden_dim):
 
 def create_model_test(vocab_size, hidden_dim):
     en = Input(shape=(1,), name='en_input_w')
-    s = Embedding(vocab_size, 64, input_length=1, mask_zero=True, name='en_embed_s')(en)
+    s = Embedding(vocab_size, FLAGS.embedding_size, input_length=1, mask_zero=True, name='en_embed_s')(en)
     h =LSTM(hidden_dim, return_sequences=False, name='hidden_h')(s)
     c = RepeatVector(1, name='repeated_hidden_c')(h)
 
@@ -143,12 +137,26 @@ def train():
             print("%d iterations" % (i+1))
             model_train.save(FLAGS.train_dir + "/itr_%d.chkpoint" % (i+1), overwrite=False)
 
+# FIXME
+# * how will we give input to decoder? text file? command line?
+def decode(en_sentences):
+    # FIXME: make below flags
+    en_length, hidden_dim = 40, 1000
+    tester = SMT_Tester(en_length, hidden_dim, FLAGS.vocab_size, FLAGS.vocab_size, FLAGS.embedding_size)
+    output = []
+    # prev = np.zeros([vocab_size,1])
+    # for word in en_input:
+    #     p = model.predict([word, prev])
+    #     cur = softmax_sampling(p)
+    #     prev = cur
+    #     output.append(prev)
+    return output
 
 if __name__ == "__main__":
     if FLAGS.plot_name is not None: 
         from keras.utils.visualize_util import plot
 
     if FLAGS.decode:
-        decoding()
+        decode()
     else:
         train()
