@@ -55,9 +55,6 @@ tf.app.flags.DEFINE_string("train_dir", "wmt", "Training directory.")
 tf.app.flags.DEFINE_integer("max_train_data_size", 0, "Limit on the size of training data (0: no limit).")
 tf.app.flags.DEFINE_integer("steps_per_checkpoint", 200,  "How many training steps to do per checkpoint.")
 tf.app.flags.DEFINE_boolean("decode", False, "Set to True for interactive decoding.")
-tf.app.flags.DEFINE_boolean("self_test", False, "Run a self-test if this is set to True.")
-tf.app.flags.DEFINE_boolean("use_fp16", False, "Train using fp16 instead of fp32.")
-tf.app.flags.DEFINE_boolean("quick_and_dirty", False, "Quick & Dirty settings for fast testing")
 tf.app.flags.DEFINE_string("plot_name", None, "base name for plots")
 FLAGS = tf.app.flags.FLAGS
 
@@ -150,8 +147,10 @@ def decode(en_sentences):
     output = []
     for sentence in en_sentences:
         tester.encode(sentence)
-        terminated = False
         words = tester.decode()
+        
+
+        # terminated = False
         # while not terminated:
         #     for word in words:
         #         tester.decode()
