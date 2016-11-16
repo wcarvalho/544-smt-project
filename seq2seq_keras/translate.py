@@ -27,6 +27,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 import numpy as np
 import tensorflow as tf
 from keras.layers import RepeatVector, Input, merge
@@ -35,7 +36,6 @@ from keras.layers.embeddings import Embedding
 from keras.layers.recurrent import LSTM
 from keras.layers.wrappers import TimeDistributed
 from keras.models import Model
-from keras.preprocessing.sequence import pad_sequences
 from tensorflow import one_hot
 from seq2seq_keras.data_feeder import *
 
@@ -125,6 +125,8 @@ def train():
                                          prefix="newstest2013",
                                          vocab_size=FLAGS.vocab_size)
 
+    # TODO: should call test_feeder.get_batch() once to get the entire test set, which is reasonably small.
+
     en_length, fr_length, hidden_dim = 40, 50, 1000
     model_train = create_model(FLAGS.vocab_size, en_length, fr_length, hidden_dim)
     model_test = create_model_test(FLAGS.vocab_size, hidden_dim)
@@ -134,14 +136,17 @@ def train():
 
     for i in range(1000):
         source, target = train_feeder.get_batch(FLAGS.batch_size, en_length=en_length, fr_length=fr_length)
-        # embedding handles one hot coding, so source doesn't need it.
         source, target = np.asarray(source), np.asarray(target)
-        target = one_hot(target, FLAGS.vocab_size)
-        model_train.train_on_batch([source, target], target)
-        if i+1 % 100 == 0:
+        target = one_hot(target, FLAGS.vocab_size) # embedding handles one hot coding, so source doesn't need it.
+        loss = model_train.train_on_batch([source, target], target)
+        print("Iteration: %d | Loss = %.3f" % (i+1, loss))
+
+        if (i+1) % 100 == 0:
             # TODO: should also run a validation/test
-            print("%d iterations" % (i+1))
-            model_train.save(FLAGS.train_dir + "/itr_%d.chkpoint" % (i+1), overwrite=False)
+            # 1. somehow copy weights from train model to test model
+            # 2. model_test.test_on_batch(...)
+            print("saving a model...")
+            model_train.save(os.path.join(FLAGS.train_dir, "itr_%d.chkpoint" % (i+1)), overwrite=False)
 
 
 if __name__ == "__main__":
