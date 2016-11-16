@@ -58,7 +58,7 @@ class DataFeeder:
             self.fr_data = self.read_data(self.fr_ids_path, max_num_samples)
 
 
-    def get_batch(self, batch_size=64):
+    def get_batch(self, batch_size=64, en_length=40, fr_length=50):
         en = []
         fr = []
         for i in range(batch_size):
@@ -66,13 +66,14 @@ class DataFeeder:
                 self.pos = 0
             tmp_en = self.en_data[self.pos + i]
             tmp_fr = self.fr_data[self.pos + i]
-            while(len(tmp_en) < 50):
+            while(len(tmp_en) < en_length):
                 tmp_en.append(0)
             tmp_en = list(reversed(tmp_en))
-
             tmp_fr.insert(0, 0)
-            while(len(tmp_fr) < 50):
+            while(len(tmp_fr) < fr_length):
                 tmp_fr.append(0)
+            tmp_en = tmp_en[:en_length]
+            tmp_fr = tmp_fr[:fr_length]
             en.append(tmp_en)
             fr.append(tmp_fr)
         self.pos += batch_size
@@ -93,7 +94,7 @@ class DataFeeder:
             counter += 1
             if counter % 10000 == 0:
                 print ("%d lines read" % counter)
-            if counter >= max_num_samples:
+            if max_num_samples > 0 and counter >= max_num_samples:
                 break
         return output
 
@@ -214,7 +215,7 @@ if __name__ == "__main__":
     print(args)
 
     # add your testing code here
-    df = DataFeeder(args.data_dir, args.prefix, args.vocab_size, 1000000)
+    df = DataFeeder(args.data_dir, args.prefix, args.vocab_size, 10000000)
     print("English data size %d" % len(df.en_data))
     print("French data size %d" % len(df.fr_data))
 
