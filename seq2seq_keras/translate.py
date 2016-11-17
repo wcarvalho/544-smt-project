@@ -37,6 +37,7 @@ from keras import backend as K
 # FIXME: this is sloppy, whoever did this
 from data_feeder import *
 from tester import SMT_Tester
+from callbacks import MyTensorBoard
 
 
 def create_model(vocab_size, en_length, fr_length, hidden_dim):
@@ -143,12 +144,11 @@ def train_auto():
     print(model_train.summary())
 
     # tensorboard callback
-    tb_callback = TensorBoard(log_dir='../logs', histogram_freq=1, write_graph=True, write_images=False)
-    tb_callback.on_batch_begin()
+    tb_callback = MyTensorBoard(log_dir='../logs', histogram_freq=1, write_graph=True, write_images=False)
     # check point callback
     cp_callback = ModelCheckpoint(filepath="../logs/weights.{epoch:02d}-{val_loss:.2f}.hdf5",
                                   monitor='val_loss',
-                                  verbose = 1,
+                                  verbose = 0,
                                   mode="auto")
     model_train.fit([source, target], target_output, validation_split=0.1, nb_epoch=5, callbacks=[tb_callback, cp_callback])
 
