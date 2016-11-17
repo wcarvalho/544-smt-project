@@ -96,7 +96,7 @@ def train():
 
     # TODO: should call test_feeder.get_batch() once to get the entire test set, which is reasonably small.
 
-    en_length, fr_length, hidden_dim = 40, 50, 1000
+    en_length, fr_length, hidden_dim = 40, 50, 256
     model_train = create_model(FLAGS.vocab_size, en_length, fr_length, hidden_dim)
     model_test = create_model_test(FLAGS.vocab_size, hidden_dim)
     model_train.compile(optimizer='rmsprop', loss='categorical_crossentropy')
@@ -162,7 +162,7 @@ def test():
                                          vocab_size=vocab_size)
 
     # FIXME: make below flags
-    en_length, hidden_dim = 40, 1000
+    en_length, hidden_dim = 40, 256
     tester = SMT_Tester(en_length, hidden_dim, vocab_size, vocab_size, embedding_size)
     # tester.load_weights()
 
@@ -227,7 +227,7 @@ if __name__ == "__main__":
     parser.add_argument("--learning_rate_decay_factor", type=float, default=0.99, help="Learning rate decays by this much.")
     parser.add_argument("--max_gradient_norm", type=float, default=5.0, help="Clip gradients to this norm.")
     parser.add_argument("--batch_size", type=int, default=64, help="Batch size to use during training.")
-    parser.add_argument("--embedding_size", type=int, default=500, help="Size of word embedding")
+    parser.add_argument("--embedding_size", type=int, default=100, help="Size of word embedding")
     parser.add_argument("--vocab_size", type=int, default=10000, help="Vocabulary size.")
     parser.add_argument("--data_dir", default="wmt", help="Data directory")
     parser.add_argument("--train_dir", default="wmt", help="Training directory.")

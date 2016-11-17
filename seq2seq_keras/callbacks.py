@@ -1,4 +1,5 @@
 from keras.callbacks import *
+import os
 
 class MyTensorBoard(TensorBoard):
 
@@ -13,3 +14,7 @@ class MyTensorBoard(TensorBoard):
             summary_value.tag = name
             self.writer.add_summary(summary, batch)
         self.writer.flush()
+
+        if (batch+1) % 50000 == 0:
+            save_path = "model-%d.ckpt" % (batch+1)
+            self.model.save(os.path.join(self.log_dir, save_path))
