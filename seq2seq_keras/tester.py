@@ -13,7 +13,7 @@ class SMT_Tester(object):
     self.embedding_size = embedding_size
 
     self._build_encoder(en_input_length, hidden_dim, en_vocab_size, embedding_size)
-    self._build_decoder(hidden_dim, embedding_size)
+    self._build_decoder(hidden_dim, fr_vocab_size, embedding_size)
     self._build_fr_word_embedder(fr_vocab_size, embedding_size)
 
   def load_weights(self):
@@ -23,12 +23,12 @@ class SMT_Tester(object):
     en = Input(shape=(input_length,), name='en_input_w')
     s = Embedding(vocab_size, embedding_size, input_length=input_length, name='en_embed_s')(en)
     h = LSTM(hidden_dim, return_sequences=False, name='hidden_h')(s)
-    self.encoder = Model([encoder_input], [h])
+    self.encoder = Model([en], [h])
     return self.encoder
 
-  def _build_decoder(self, hidden_dim, embedding_size=64):
-    decoder_input = Input(shape=(1, embedding_size+hidden_dim), name='decoder_input')
-    z = LSTM(hidden_dim, return_sequences=False, name='hidden_z')(decoder_input)
+  def _build_decoder(self, hidden_dim, vocab_size, embedding_size=64):
+    decoder_input = Input(batch_shape=(1, 1, embedding_size+hidden_dim), name='decoder_input')
+    z = LSTM(hidden_dim, name='hidden_z', stateful=True)(decoder_input)
     p = Dense(vocab_size, activation='softmax', name='prob')(z)
     self.decoder = Model([decoder_input], [p])
     return self.decoder
@@ -46,8 +46,11 @@ class SMT_Tester(object):
     return self.recurrent_h
 
   def _make_initial_batch(self):
-    padding = np.zeros((1,self.embedding_size+self.hidden_dim-2*self.hidden_dim))
-    return np.array([np.concatenate([self.recurrent_h,self.recurrent_h,padding],axis=-1)]).astype(np.float32)
+    if self.hidden_dim < self.embedding_size: padding_size = self.embedding_size-self.hidden_dim
+    else: padding_size = self.embedding_size
+
+    padding = np.zeros((1,padding_size))
+    return np.array([np.concatenate([self.recurrent_h,padding],axis=-1)]).astype(np.float32)
 
   def _make_regular_batch(self, word_indx):
     indx_array = np.array([word_indx])

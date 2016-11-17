@@ -28,6 +28,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import sys
 import numpy as np
 import tensorflow as tf
 from keras.layers import RepeatVector, Input, merge
@@ -145,38 +146,54 @@ def train():
             model_train.save(os.path.join(FLAGS.train_dir, "itr_%d.chkpoint" % (i+1)), overwrite=False)
 
     # use best weights for testing
-    test()
 
 
-def test()
+def test():
+    vocab_size = FLAGS.vocab_size
+    embedding_size = FLAGS.embedding_size
+
     test_feeder = DataFeeder(data_dir=FLAGS.data_dir,
                                          prefix="newstest2013",
-                                         vocab_size=FLAGS.vocab_size)
+                                         vocab_size=vocab_size)
 
-    tester = SMT_Tester(en_input_length, hidden_dim, en_vocab_size, fr_vocab_size, embedding_size)
-    tester.load_weights()
-    # source, target = train_feeder.get_batch(FLAGS.batch_size, en_length=en_length, fr_length=fr_length)
+    # FIXME: make below flags
+    en_length, hidden_dim = 40, 1000
+    tester = SMT_Tester(en_length, hidden_dim, vocab_size, vocab_size, embedding_size)
+    # tester.load_weights()
 
-    for sentence in sentences:
-        tester.encode(sentence)
+    for i in range(10):
+        en_sentence, _ = test_feeder.get_batch(1, en_length=en_length)
+        en_sentence = np.array(en_sentence)
+        tester.encode(en_sentence)
         # Beam Search
         probabilties = tester.decode()
-        probabilties = tester.mass_decode([word_indx])
+        print (probabilties)
+        best = get_bestN(probabilties, 10)
+        word_indices = np.array([i[0] for i in best])
+        probabilties = tester.mass_decode(word_indices)
+        print (probabilties)
+        break
         # output is a french sentence which will be used 
     # once done, 
 
 
+def array2indexedtuple(array): 
+  return [val for val in enumerate(array[0])]
+
+def get_bestN(array, N):
+  indexed_array = array2indexedtuple(array)
+  return sorted(indexed_array, key=lambda x: x[1])[:N]
+
 # FIXME
 # * how will we give input to decoder? text file? command line?
 def decode():
+    test()
 
 
     # for i in range(1000):
     #     source, target = train_feeder.get_batch(FLAGS.batch_size, en_length=en_length, fr_length=fr_length)
     #     print source
     #     print target
-    # FIXME: make below flags
-    # en_length, hidden_dim = 40, 1000
     # tester = SMT_Tester(en_length, hidden_dim, FLAGS.vocab_size, FLAGS.vocab_size, FLAGS.embedding_size)
     # output = []
     # for sentence in en_sentences:
@@ -196,7 +213,7 @@ def decode():
     #     cur = softmax_sampling(p)
     #     prev = cur
     #     output.append(prev)
-    return output
+    # return output
 
 if __name__ == "__main__":
     if FLAGS.plot_name is not None: 
