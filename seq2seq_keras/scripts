@@ -1,5 +1,5 @@
 # training
-python ./translate.py --data_dir ../wmt --train_dir ../cache  --max_train_data_size=200000 --vocab_size=10000 --plot_name=model
+python ./translate.py --data_dir ../wmt --train_dir ../cache  --max_train_data_size=4000000 --vocab_size=10000 --plot_name=model
 
 # testing
 #python ./translate.py --decode --data_dir ./wmt --train_dir ./cache --size=256 --num_layers=2

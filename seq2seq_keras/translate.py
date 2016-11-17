@@ -130,9 +130,9 @@ def train_auto():
                               vocab_size=FLAGS.vocab_size,
                               max_num_samples=FLAGS.max_train_data_size)
 
-    test_feeder = DataFeeder(data_dir=FLAGS.data_dir,
-                             prefix="newstest2013",
-                             vocab_size=FLAGS.vocab_size)
+    # test_feeder = DataFeeder(data_dir=FLAGS.data_dir,
+    #                          prefix="newstest2013",
+    #                          vocab_size=FLAGS.vocab_size)
 
     en_length, fr_length, hidden_dim = 40, 50, 1000
     source, target = train_feeder.get_batch(FLAGS.max_train_data_size, en_length=en_length, fr_length=fr_length)
