@@ -46,8 +46,9 @@ def create_model(vocab_size, en_length, fr_length, hidden_dim):
     h =LSTM(hidden_dim, return_sequences=False, name='hidden_h')(s)
     c = RepeatVector(fr_length, name='repeated_hidden_c')(h)
     fr = Input(shape=(fr_length,), name='fr_input_y')
-    fr_one_hot = Lambda(lambda x : K.one_hot(K.cast(x,'int32'), FLAGS.vocab_size), name="fr_input_y_one_hot")(fr)
-    decode_input = merge([c, fr_one_hot], mode='concat',  name='y_cat_c')
+    # fr_one_hot = Lambda(lambda x : K.one_hot(K.cast(x,'int32'), FLAGS.vocab_size), name="fr_input_y_one_hot")(fr)
+    fr_encode = Embedding(vocab_size, FLAGS.embedding_size, input_length=fr_length, mask_zero=False, name='fr_embed_s')(fr)
+    decode_input = merge([fr_encode, c], mode='concat', name='y_cat_c')
     z = LSTM(hidden_dim, return_sequences=True, name='hidden_z')(decode_input)
     p = TimeDistributed(Dense(vocab_size, activation='softmax'), name='prob')(z)
     model = Model(input=[en, fr], output=p)
@@ -122,6 +123,9 @@ def train():
             model_train.save(os.path.join(FLAGS.train_dir, "itr_%d.chkpoint" % (i+1)), overwrite=True)
     ## use best weights for testing
 
+# def custom_loss(y_true, y_pred):
+#     return K.sparse_categorical_crossentropy(y_pred, y_true, from_logits=True)
+
 
 def train_auto():
     # Prepare WMT data
@@ -134,23 +138,23 @@ def train_auto():
     #                          prefix="newstest2013",
     #                          vocab_size=FLAGS.vocab_size)
 
-    en_length, fr_length, hidden_dim = 40, 50, 1000
+    en_length, fr_length, hidden_dim = 20, 25, 256
     source, target = train_feeder.get_batch(FLAGS.max_train_data_size, en_length=en_length, fr_length=fr_length)
     source, target = np.asarray(source), np.asarray(target)
     target_output = np.expand_dims(target, -1)
 
     model_train = create_model(FLAGS.vocab_size, en_length, fr_length, hidden_dim)
-    model_train.compile(optimizer='rmsprop', loss='sparse_categorical_crossentropy')
+    model_train.compile(optimizer='rmsprop', loss='sparse_categorical_crossentropy') # , metrics=['kullback_leibler_divergence']
     print(model_train.summary())
 
     # tensorboard callback
-    tb_callback = MyTensorBoard(log_dir='../logs', histogram_freq=1, write_graph=True, write_images=False)
+    tb_callback = MyTensorBoard(log_dir='../logs', histogram_freq=0, write_graph=False, write_images=False)
     # check point callback
     cp_callback = ModelCheckpoint(filepath="../logs/weights.{epoch:02d}-{val_loss:.2f}.hdf5",
                                   monitor='val_loss',
                                   verbose = 0,
                                   mode="auto")
-    model_train.fit([source, target], target_output, validation_split=0.1, nb_epoch=5, callbacks=[tb_callback, cp_callback])
+    model_train.fit([source, target], target_output, validation_split=0.1, nb_epoch=1, callbacks=[tb_callback, cp_callback])
 
 
 def test():
@@ -178,8 +182,6 @@ def test():
         probabilties = tester.mass_decode(word_indices)
         print (probabilties)
         break
-        # output is a french sentence which will be used 
-    # once done, 
 
 
 def array2indexedtuple(array):
