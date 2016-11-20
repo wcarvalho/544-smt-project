@@ -44,17 +44,26 @@ class DataFeeder:
         # as a side effect of preparing data, self.data and self.vocabulary should've been
         # initialized. If they are empty, it means that all the temporary files exist already
         # and nothing has been done, so we need to read from the files manually.
+
         print("start reading vocabulary... ")
         if not self.en_vocab:
             self.en_vocab, _ = self.read_vocabulary(self.en_vocab_path)
         if not self.fr_vocab:
             self.fr_vocab, _ = self.read_vocabulary(self.fr_vocab_path)
+
+        print self.fr_vocab
+        self.fr_indx2vocab = indx2vocab(self.fr_vocab)
+        self.en_indx2vocab = indx2vocab(self.en_vocab)
+
         print("start reading data... ")
         if not self.en_data:
             self.en_data = self.read_data(self.en_ids_path, max_num_samples)
         if not self.fr_data:
             self.fr_data = self.read_data(self.fr_ids_path, max_num_samples)
 
+
+    def fr_indx2vocab(self): return self.fr_indx2vocab
+    def en_indx2vocab(self): return self.en_indx2vocab
 
     def get_batch(self, batch_size=64, en_length=40, fr_length=50):
         en = []
@@ -197,6 +206,10 @@ class DataFeeder:
             self.data_to_token_ids(self.en_raw_path, self.en_ids_path, self.en_vocab_path, tokenizer)
         print("finished")
 
+def indx2vocab(vocabulary):
+    map = {}
+    for i, v in enumerate(vocabulary): map[i] = v
+    return map
 
 if __name__ == "__main__":
 

@@ -24,6 +24,7 @@ For questions regarding the project, please leave comments or pull requests to:
 """
 
 import os
+import sys
 import numpy as np
 from keras.layers import RepeatVector, Input, merge
 from keras.layers.core import Dense, Lambda
@@ -36,6 +37,7 @@ from keras import backend as K
 
 # FIXME: this is sloppy, whoever did this
 from data_feeder import *
+
 from tester import SMT_Tester
 from callbacks import MyTensorBoard
 
@@ -166,32 +168,75 @@ def test():
                                          vocab_size=vocab_size)
 
     # FIXME: make below flags
-    en_length, hidden_dim = 40, 256
+    en_length, hidden_dim = 40, 1000
     tester = SMT_Tester(en_length, hidden_dim, vocab_size, vocab_size, embedding_size)
     # tester.load_weights()
 
+    beam_size = 5
     for i in range(10):
         en_sentence, _ = test_feeder.get_batch(1, en_length=en_length)
         en_sentence = np.array(en_sentence)
         tester.encode(en_sentence)
+
+
         # Beam Search
-        probabilties = tester.decode()
-        print (probabilties)
-        best = get_bestN(probabilties, 10)
-        word_indices = np.array([i[0] for i in best])
-        probabilties = tester.mass_decode(word_indices)
-        print (probabilties)
+        source_vector = tester.decode()
+
+        # initialize matrixs and vectors
+        final_translation_index_list = []
+
+        index_currentw_matrix = np.zeros((beam_size, beam_size)) 
+        index_previousw_matrix = np.zeros((beam_size, beam_size))
+        product_vector = np.zeros((1, beam_size * vocab_size))
+
+        # indexed_product_vector[:]=''
+
+        # sort the source_vector and get the top beam_size largest probabilities
+        fifty_index = np.argsort(source_vector, kind = 'heapsort')[:, -beam_size:]
+        fifty_largest = np.sort(source_vector, kind = 'heapsort')[:, -beam_size:]
+
+        # generate the matrix of top beam_size French words for each English word
+        for j in range(1, beam_size):
+
+            list_of_fifty_vector = tester.mass_decode(fifty_index)
+
+            for i in range(0, beam_size):
+
+                temp = list_of_fifty_vector[i] * fifty_largest[:, i]
+                product_vector[:, vocab_size * i:vocab_size * (i + 1)] = temp
+            
+            fifty_index = np.argsort(product_vector, kind = 'heapsort')[:, -beam_size:]
+            fifty_largest = np.sort(product_vector, kind = 'heapsort')[:, -beam_size:]
+
+            index_previousw_matrix[j, :] = fifty_index / vocab_size
+            index_currentw_matrix[j, :] = fifty_index % vocab_size
+            fifty_index = index_currentw_matrix[j, :]
+
+
+        # do a bottom-up search to figure out the french words index sequence for the largest probability
+        final_translation_index_list.append(int(index_currentw_matrix[beam_size-1, beam_size-1]))
+        for i in range(beam_size-2, -1, -1):
+            index = int(index_previousw_matrix[i+1, i+1])
+            previous_word_index = index_currentw_matrix[i, index]
+            final_translation_index_list.append(int(previous_word_index))
+        final_translation_index_list.reverse()
+        print (final_translation_index_list)
+        print en_sentence
+        print indices2sent(en_sentence[0], test_feeder.en_indx2vocab)
+        print indices2sent(final_translation_index_list, test_feeder.fr_indx2vocab)
+        fr_sen = ""
         break
+    # print (final_translation_index_list)
+        # output is a french sentence which will be used 
+    # once done, 
 
 
-def array2indexedtuple(array):
-  return [val for val in enumerate(array[0])]
-
-
-def get_bestN(array, N):
-  indexed_array = array2indexedtuple(array)
-  return sorted(indexed_array, key=lambda x: x[1])[:N]
-
+def indices2sent(indices, indx2vocab):
+    str = ""
+    for i in indices:
+        if i == 0: continue
+        str += indx2vocab[i] + " "
+    return str
 
 # FIXME
 # * how will we give input to decoder? text file? command line?
@@ -235,7 +280,7 @@ if __name__ == "__main__":
     parser.add_argument("--train_dir", default="wmt", help="Training directory.")
     parser.add_argument("--max_train_data_size", type=int, default=0, help="Limit on the size of training data (0: no limit).")
     parser.add_argument("--steps_per_checkpoint", type=int, default=200, help="How many training steps to do per checkpoint.")
-    parser.add_argument("--decode", type=bool, default=False, help="Set to True for interactive decoding.")
+    parser.add_argument("--decode", action='store_true', default=False, help="Set for interactive decoding.")
     parser.add_argument("--plot_name", help="base name for plots")
     FLAGS = parser.parse_args()
     print(FLAGS)

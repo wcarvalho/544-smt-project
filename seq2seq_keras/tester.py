@@ -65,7 +65,11 @@ class SMT_Tester(object):
 
   def mass_decode(self, word_indices):
     probabilties = []
+    length = len(word_indices.shape)
+    if length == 2: word_indices = word_indices[0]
+    print
     for indx in word_indices:
+      print "indx:", indx
       probabilties.append(self.decode(indx))
 
     return probabilties
