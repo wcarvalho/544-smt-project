@@ -6,8 +6,6 @@
 import re
 import argparse
 import os.path
-import data_utils
-
 from tensorflow.python.platform import gfile
 
 # Special vocabulary symbols - we always put them at the start.
@@ -62,14 +60,14 @@ class DataFeeder:
         en = []
         fr = []
         for i in range(batch_size):
-            if self.pos + i > len(self.en_data):
+            if self.pos + i > len(self.en_data)-1:
                 self.pos = 0
             tmp_en = self.en_data[self.pos + i]
             tmp_fr = self.fr_data[self.pos + i]
             while(len(tmp_en) < en_length):
                 tmp_en.append(0)
             tmp_en = list(reversed(tmp_en))
-            tmp_fr.insert(0, 0)
+            tmp_fr = [GO_ID] + tmp_fr + [EOS_ID]
             while(len(tmp_fr) < fr_length):
                 tmp_fr.append(0)
             tmp_en = tmp_en[:en_length]
