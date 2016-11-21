@@ -194,6 +194,8 @@ def en2fr_beam_search(smt, en_sentence, beam_size, vocab_size):
 
 
     # do a bottom-up search to figure out the french words index sequence for the largest probability
+    print "index_previousw_matrix", index_previousw_matrix
+    print "index_currentw_matrix", index_currentw_matrix
     final_translation_index_list.append(int(index_currentw_matrix[beam_size-1, beam_size-1]))
     for i in range(beam_size-2, -1, -1):
         index = int(index_previousw_matrix[i+1, i+1])
@@ -218,18 +220,19 @@ def test(FLAGS):
 
     tester = SMT_Tester(en_length, hidden_dim, vocab_size, vocab_size, embedding_size)
     tester.load_weights(saved_weights)
-    sys.exit(0)
 
     for i in range(10):
-        en_sentence, _ = test_feeder.get_batch(1, en_length=en_length)
+        en_indices, _ = test_feeder.get_batch(1, en_length=en_length)
 
-        en_sentence = np.array(en_sentence)
-        fr_sentence = en2fr_beam_search(tester, en_sentence, beam_size, vocab_size)
+        en_indices = np.array(en_indices)
+        fr_indices = en2fr_beam_search(tester, en_indices, beam_size, vocab_size)
 
-        en_sentence=en_sentence[0]
+        en_indices=en_indices[0]
 
-        print indices2sent(en_sentence, test_feeder.en_indx2vocab)
-        print indices2sent(fr_sentence, test_feeder.fr_indx2vocab)
+        en_sent = indices2sent(en_indices, test_feeder.en_indx2vocab)
+        fr_sent = indices2sent(fr_indices, test_feeder.fr_indx2vocab)
+        print en_indices, en_sent
+        print fr_indices, fr_sent
         break
     # print (final_translation_index_list)
         # output is a french sentence which will be used 
@@ -269,7 +272,7 @@ if __name__ == "__main__":
     parser.add_argument("--steps_per_checkpoint", type=int, default=200, help="How many training steps to do per checkpoint.")
     parser.add_argument("--decode", action='store_true', default=False, help="Set for interactive decoding.")
     parser.add_argument("--plot_name", type=str, help="base name for plots")
-    parser.add_argument("--weights", type=str, help="base name for plots")
+    parser.add_argument("--weights", type=str, help="weights file to load weights")
     FLAGS = parser.parse_args()
     print(FLAGS)
 

@@ -68,8 +68,10 @@ class SMT_Tester(object):
     probabilties = []
     length = len(word_indices.shape)
     if length == 2: word_indices = word_indices[0]
+    weights = self.decoder.get_weights()
     for indx in word_indices:
       probabilties.append(self.decode(indx))
+      self.decoder.set_weights(weights)
 
     return probabilties
 
