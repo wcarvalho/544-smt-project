@@ -1,6 +1,7 @@
 from keras.layers import Input, Embedding, LSTM, Dense, merge
 from keras.models import Model
 import numpy as np
+import sys
 
 class SMT_Tester(object):
   """docstring for SMT_Tester"""
@@ -64,14 +65,22 @@ class SMT_Tester(object):
     probabilties = self.decoder.predict(batch)
     return probabilties
 
+  def get_decoder_rnn_weights(self): 
+    return self.decoder.layers[1].get_weights()
+
+  def set_decoder_rnn_weights(self, weights):
+    self.decoder.layers[1].set_weights(weights)
+
   def mass_decode(self, word_indices):
     probabilties = []
     length = len(word_indices.shape)
     if length == 2: word_indices = word_indices[0]
-    weights = self.decoder.get_weights()
+    
+    weights = self.get_decoder_rnn_weights()
+    
     for indx in word_indices:
       probabilties.append(self.decode(indx))
-      self.decoder.set_weights(weights)
+      self.set_decoder_rnn_weights(weights)
 
     return probabilties
 

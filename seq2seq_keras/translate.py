@@ -228,11 +228,14 @@ def test(FLAGS):
         fr_indices = en2fr_beam_search(tester, en_indices, beam_size, vocab_size)
 
         en_indices=en_indices[0]
-
-        en_sent = indices2sent(en_indices, test_feeder.en_indx2vocab)
-        fr_sent = indices2sent(fr_indices, test_feeder.fr_indx2vocab)
-        print en_indices, en_sent
-        print fr_indices, fr_sent
+        en_sent = test_feeder.feats2words(en_indices)
+        fr_sent = test_feeder.feats2words(fr_indices, "fr")
+        print en_sent
+        print fr_sent
+        # en_sent = indices2sent(en_indices, test_feeder.en_indx2vocab)
+        # fr_sent = indices2sent(fr_indices, test_feeder.fr_indx2vocab)
+        # print en_indices, en_sent
+        # print fr_indices, fr_sent
         break
     # print (final_translation_index_list)
         # output is a french sentence which will be used 
