@@ -4,3 +4,11 @@ wmt/
 logs/
 *.pyc
 *~
+data/*.gz
+data/*.en
+data/*.fr
+data/*.tar
+data/*.tgz
+*sublime*
+*sftp*
+*/weights/*
