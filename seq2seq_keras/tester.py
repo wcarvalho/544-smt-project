@@ -16,8 +16,9 @@ class SMT_Tester(object):
     self._build_decoder(hidden_dim, fr_vocab_size, embedding_size)
     self._build_fr_word_embedder(fr_vocab_size, embedding_size)
 
-  def load_weights(self):
-    raise Exception(not_implemented("load_weights"))
+  def load_weights(self, weights):
+    self.encoder.load_weights(weights, by_name=True)
+    self.decoder.load_weights(weights, by_name=True)
 
   def _build_encoder(self, input_length, hidden_dim, vocab_size, embedding_size=64):
     en = Input(shape=(input_length,), name='en_input_w')
@@ -67,19 +68,10 @@ class SMT_Tester(object):
     probabilties = []
     length = len(word_indices.shape)
     if length == 2: word_indices = word_indices[0]
-    print
     for indx in word_indices:
-      print "indx:", indx
       probabilties.append(self.decode(indx))
 
     return probabilties
 
-
-def array2indexedtuple(array): 
-  return [val for val in enumerate(array[0])]
-
-def get_bestN(array, N):
-  indexed_array = array2indexedtuple(array)
-  return sorted(indexed_array, key=lambda x: x[1])[:N]
 
 def not_implemented(name): return "'"+name+"' has not yet been implemented!"

@@ -51,7 +51,6 @@ class DataFeeder:
         if not self.fr_vocab:
             self.fr_vocab, _ = self.read_vocabulary(self.fr_vocab_path)
 
-        print self.fr_vocab
         self.fr_indx2vocab = indx2vocab(self.fr_vocab)
         self.en_indx2vocab = indx2vocab(self.en_vocab)
 
