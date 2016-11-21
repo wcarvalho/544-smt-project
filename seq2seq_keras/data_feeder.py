@@ -30,6 +30,7 @@ class DataFeeder:
     def __init__(self, data_dir, prefix, vocab_size=10000, max_num_samples=1000000):
         ''' During initialization all file paths are created based on the root and prefix '''
         self.en_vocab, self.fr_vocab = {}, {}
+        self.en_vocab_inv, self.fr_vocab_inv = {}, {}
         self.en_data, self.fr_data = [], []
         self.pos = 0
         self.vocab_size = vocab_size
@@ -48,11 +49,10 @@ class DataFeeder:
         print("start reading vocabulary... ")
         if not self.en_vocab:
             self.en_vocab, _ = self.read_vocabulary(self.en_vocab_path)
+            self.en_vocab_inv = self.invert_vocab(self.en_vocab)
         if not self.fr_vocab:
             self.fr_vocab, _ = self.read_vocabulary(self.fr_vocab_path)
-
-        self.fr_indx2vocab = indx2vocab(self.fr_vocab)
-        self.en_indx2vocab = indx2vocab(self.en_vocab)
+            self.fr_vocab_inv = self.invert_vocab(self.fr_vocab)
 
         print("start reading data... ")
         if not self.en_data:
@@ -61,8 +61,33 @@ class DataFeeder:
             self.fr_data = self.read_data(self.fr_ids_path, max_num_samples)
 
 
-    def fr_indx2vocab(self): return self.fr_indx2vocab
-    def en_indx2vocab(self): return self.en_indx2vocab
+    def invert_vocab(self, vocab):
+        return {vocab[key]: key for key in vocab}
+
+
+    def words2feats(self, words, language="en"):
+        if language == "en":
+            words = [w if w in self.en_vocab else _UNK for w in words]
+            return [self.en_vocab[w] for w in words]
+        elif language == "fr":
+            words = [w if w in self.fr_vocab else _UNK for w in words]
+            return [self.fr_vocab[w] for w in words]
+        else:
+            raise ValueError('language can only be "en" or "fr"')
+
+
+    def feats2words(self, feats, language="en", skip_special_tokens=False):
+        if language not in ["en","fr"]:
+            raise ValueError('language can only be "en" or "fr"')
+        words = []
+        if language == "en":
+            words = [self.en_vocab_inv[f] for f in feats]
+        elif language == "fr":
+            words = [self.fr_vocab_inv[f] for f in feats]
+        if skip_special_tokens:
+            words = [w for w in words if w not in [_PAD, _GO, _EOS]]
+        return words
+
 
     def get_batch(self, batch_size=64, en_length=40, fr_length=50):
         en = []
@@ -205,10 +230,6 @@ class DataFeeder:
             self.data_to_token_ids(self.en_raw_path, self.en_ids_path, self.en_vocab_path, tokenizer)
         print("finished")
 
-def indx2vocab(vocabulary):
-    map = {}
-    for i, v in enumerate(vocabulary): map[i] = v
-    return map
 
 if __name__ == "__main__":
 
@@ -225,14 +246,35 @@ if __name__ == "__main__":
     print(args)
 
     # add your testing code here
-    df = DataFeeder(args.data_dir, args.prefix, args.vocab_size, 10000000)
+    df = DataFeeder(args.data_dir, args.prefix, args.vocab_size, 10000)
     print("English data size %d" % len(df.en_data))
     print("French data size %d" % len(df.fr_data))
 
-    en, fr = df.get_batch(84)
-    print("Requested batch size: %d" % 84)
+    en, fr = df.get_batch(10)
+    print("Requested batch size: %d" % 10)
     print("English batch size %d" % len(en))
     print("French batch size %d" % len(fr))
+
+    print("\ntesting words2feats and feats2words on an random sentence...")
+    feats = df.words2feats("What a beautiful day !".split())
+    print(feats)
+    words = df.feats2words(feats)
+    print(words)
+
+    print("\ntesting feats2words on English training data...")
+    for seq in en:
+        sentence = df.feats2words(seq, language="en", skip_special_tokens=True)
+        # English sequences were reversed when processed, so we need to reverse
+        # them back before printing.
+        sentence.reverse()
+        print(" ".join(sentence))
+
+    print("\ntesting feats2words on French training data...")
+    for seq in fr:
+        sentence = df.feats2words(seq, language="fr", skip_special_tokens=True)
+        print(" ".join(sentence))
+
+    print("finished")
 
 
 
