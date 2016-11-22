@@ -3,6 +3,19 @@ from keras.models import Model
 import numpy as np
 import sys
 
+
+
+class Node(object):
+  """docstring for Node"""
+  def __init__(self, probabilties, weights, indices):
+    self.probabilties = probabilties
+    self.indices = indices
+    self.weights = weights
+
+  def function():
+    pass
+
+
 class SMT_Tester(object):
   """docstring for SMT_Tester"""
   def __init__(self, en_input_length, hidden_dim, en_vocab_size, fr_vocab_size, embedding_size=64):
@@ -73,16 +86,20 @@ class SMT_Tester(object):
 
   def mass_decode(self, word_indices):
     probabilties = []
+    post_weights = []
     length = len(word_indices.shape)
     if length == 2: word_indices = word_indices[0]
     
     weights = self.get_decoder_rnn_weights()
-    
     for indx in word_indices:
       probabilties.append(self.decode(indx))
+      post_weights.append(self.get_decoder_rnn_weights())
       self.set_decoder_rnn_weights(weights)
 
-    return probabilties
+    return probabilties, post_weights
 
+  def beam_search(en_sentence, beam_size):
+
+    return []
 
 def not_implemented(name): return "'"+name+"' has not yet been implemented!"

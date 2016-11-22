@@ -158,6 +158,8 @@ def train_auto(FLAGS):
                                   mode="auto")
     model_train.fit([source, target], target_output, validation_split=0.1, nb_epoch=1, callbacks=[tb_callback, cp_callback])
 
+# fr_indices = smt.beam_search(en_sentence, beam_size)
+
 def en2fr_beam_search(smt, en_sentence, beam_size, vocab_size):
 
     # initialize matrixs and vectors
@@ -169,7 +171,7 @@ def en2fr_beam_search(smt, en_sentence, beam_size, vocab_size):
 
     # encode sentence into continuous vector
     smt.encode(en_sentence)
-    source_vector = smt.decode()
+    source_vector, weights = smt.decode()
     
     # sort the source_vector and get the top beam_size largest probabilities
     fifty_index = np.argsort(source_vector, kind = 'heapsort')[:, -beam_size:]
@@ -178,7 +180,7 @@ def en2fr_beam_search(smt, en_sentence, beam_size, vocab_size):
     # generate the matrix of top beam_size French words for each English word
     for j in range(1, beam_size):
 
-        list_of_fifty_vector = smt.mass_decode(fifty_index)
+        list_of_fifty_vector = [probabilties, weights] = smt.mass_decode(fifty_index)
 
         for i in range(0, beam_size):
 
@@ -230,8 +232,8 @@ def test(FLAGS):
         en_indices=en_indices[0]
         en_sent = test_feeder.feats2words(en_indices)
         fr_sent = test_feeder.feats2words(fr_indices, "fr")
-        print en_sent
-        print fr_sent
+        print ("en_sent", en_sent)
+        print ("fr_sent", fr_sent)
         # en_sent = indices2sent(en_indices, test_feeder.en_indx2vocab)
         # fr_sent = indices2sent(fr_indices, test_feeder.fr_indx2vocab)
         # print en_indices, en_sent
