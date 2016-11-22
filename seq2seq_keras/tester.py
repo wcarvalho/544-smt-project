@@ -31,6 +31,7 @@ class SMT_Tester(object):
     self._build_fr_word_embedder(fr_vocab_size, embedding_size)
 
   def load_weights(self, weights):
+    if weights is None: return
     self.encoder.load_weights(weights, by_name=True)
     self.decoder.load_weights(weights, by_name=True)
 
@@ -76,7 +77,7 @@ class SMT_Tester(object):
     if word_indx is None: batch = self._make_initial_batch()
     else: batch = self._make_regular_batch(word_indx)
     probabilties = self.decoder.predict(batch)
-    return probabilties
+    return probabilties, self.get_decoder_rnn_weights()
 
   def get_decoder_rnn_weights(self): 
     return self.decoder.layers[1].get_weights()
@@ -84,17 +85,18 @@ class SMT_Tester(object):
   def set_decoder_rnn_weights(self, weights):
     self.decoder.layers[1].set_weights(weights)
 
-  def mass_decode(self, word_indices):
+  def mass_decode(self, indx_weight_pairs):
     probabilties = []
     post_weights = []
-    length = len(word_indices.shape)
-    if length == 2: word_indices = word_indices[0]
+    # length = len(indx_weight_pairs.shape)
+    # if length == 2: indx_weight_pairs = indx_weight_pairs[0]
     
-    weights = self.get_decoder_rnn_weights()
-    for indx in word_indices:
-      probabilties.append(self.decode(indx))
-      post_weights.append(self.get_decoder_rnn_weights())
+    # original_weights = self.get_decoder_rnn_weights()
+    for indx, weights in indx_weight_pairs:
       self.set_decoder_rnn_weights(weights)
+      p, w = self.decode(indx)
+      probabilties.append(p)
+      post_weights.append(w)
 
     return probabilties, post_weights
 

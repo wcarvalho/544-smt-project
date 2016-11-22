@@ -177,34 +177,37 @@ def en2fr_beam_search(smt, en_sentence, beam_size, vocab_size):
     fifty_index = np.argsort(source_vector, kind = 'heapsort')[:, -beam_size:]
     fifty_largest = np.sort(source_vector, kind = 'heapsort')[:, -beam_size:]
 
+    indx_weight_pairs = [(indx, weights) for indx in fifty_index[0]]
+    # print (indx_weight_pairs)
     # generate the matrix of top beam_size French words for each English word
     for j in range(1, beam_size):
-
-        list_of_fifty_vector = [probabilties, weights] = smt.mass_decode(fifty_index)
-
-        for i in range(0, beam_size):
-
-            temp = list_of_fifty_vector[i] * fifty_largest[:, i]
-            product_vector[:, vocab_size * i:vocab_size * (i + 1)] = temp
+        probabilities, weights = smt.mass_decode(indx_weight_pairs)
         
-        fifty_index = np.argsort(product_vector, kind = 'heapsort')[:, -beam_size:]
-        fifty_largest = np.sort(product_vector, kind = 'heapsort')[:, -beam_size:]
 
-        index_previousw_matrix[j, :] = fifty_index / vocab_size
-        index_currentw_matrix[j, :] = fifty_index % vocab_size
-        fifty_index = index_currentw_matrix[j, :]
+    #     for i in range(0, beam_size):
+
+    #         temp = list_of_fifty_vector[i] * fifty_largest[:, i]
+    #         product_vector[:, vocab_size * i:vocab_size * (i + 1)] = temp
+        
+    #     fifty_index = np.argsort(product_vector, kind = 'heapsort')[:, -beam_size:]
+    #     fifty_largest = np.sort(product_vector, kind = 'heapsort')[:, -beam_size:]
+
+    #     index_previousw_matrix[j, :] = fifty_index / vocab_size
+    #     index_currentw_matrix[j, :] = fifty_index % vocab_size
+    #     fifty_index = index_currentw_matrix[j, :]
 
 
-    # do a bottom-up search to figure out the french words index sequence for the largest probability
-    print "index_previousw_matrix", index_previousw_matrix
-    print "index_currentw_matrix", index_currentw_matrix
-    final_translation_index_list.append(int(index_currentw_matrix[beam_size-1, beam_size-1]))
-    for i in range(beam_size-2, -1, -1):
-        index = int(index_previousw_matrix[i+1, i+1])
-        previous_word_index = index_currentw_matrix[i, index]
-        final_translation_index_list.append(int(previous_word_index))
-    final_translation_index_list.reverse()
-    return final_translation_index_list
+    # # do a bottom-up search to figure out the french words index sequence for the largest probability
+    # print "index_previousw_matrix", index_previousw_matrix
+    # print "index_currentw_matrix", index_currentw_matrix
+    # final_translation_index_list.append(int(index_currentw_matrix[beam_size-1, beam_size-1]))
+    # for i in range(beam_size-2, -1, -1):
+    #     index = int(index_previousw_matrix[i+1, i+1])
+    #     previous_word_index = index_currentw_matrix[i, index]
+    #     final_translation_index_list.append(int(previous_word_index))
+    # final_translation_index_list.reverse()
+    # return final_translation_index_list
+    return []
 
 
 def test(FLAGS):
