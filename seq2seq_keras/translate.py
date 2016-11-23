@@ -38,7 +38,7 @@ from keras import backend as K
 # FIXME: this is sloppy, whoever did this
 from data_feeder import *
 
-from tester import SMT_Tester
+from tester import SMT
 from callbacks import MyTensorBoard
 
 
@@ -160,54 +160,72 @@ def train_auto(FLAGS):
 
 # fr_indices = smt.beam_search(en_sentence, beam_size)
 
-def en2fr_beam_search(smt, en_sentence, beam_size, vocab_size):
+from beam_search import get_best, Node, Graph, get_worst, get_best_indices
+
+def en2fr_beam_search(smt, feeder, en_sentence, beam_size, vocab_size, max_search=100):
 
     # initialize matrixs and vectors
-    final_translation_index_list = []
     index_currentw_matrix = np.zeros((beam_size, beam_size)) 
     index_previousw_matrix = np.zeros((beam_size, beam_size))
     product_vector = np.zeros((1, beam_size * vocab_size))
 
-
     # encode sentence into continuous vector
     smt.encode(en_sentence)
-    source_vector, weights = smt.decode()
-    
-    # sort the source_vector and get the top beam_size largest probabilities
-    fifty_index = np.argsort(source_vector, kind = 'heapsort')[:, -beam_size:]
-    fifty_largest = np.sort(source_vector, kind = 'heapsort')[:, -beam_size:]
+    all_probabilities, weights = smt.decode()
 
-    indx_weight_pairs = [(indx, weights) for indx in fifty_index[0]]
-    # print (indx_weight_pairs)
-    # generate the matrix of top beam_size French words for each English word
-    for j in range(1, beam_size):
-        probabilities, weights = smt.mass_decode(indx_weight_pairs)
-        
+    best_indices, best_probabilities = get_best(all_probabilities, beam_size)
 
-    #     for i in range(0, beam_size):
+    nodes = Graph(max_size=beam_size)
 
-    #         temp = list_of_fifty_vector[i] * fifty_largest[:, i]
-    #         product_vector[:, vocab_size * i:vocab_size * (i + 1)] = temp
-        
-    #     fifty_index = np.argsort(product_vector, kind = 'heapsort')[:, -beam_size:]
-    #     fifty_largest = np.sort(product_vector, kind = 'heapsort')[:, -beam_size:]
+    for indx, probability in zip(best_indices, best_probabilities):
+        word = feeder.feats2words([indx], "fr")[0]
+        word_node = Node(indx, np.log(probability), weights, word)
 
-    #     index_previousw_matrix[j, :] = fifty_index / vocab_size
-    #     index_currentw_matrix[j, :] = fifty_index % vocab_size
-    #     fifty_index = index_currentw_matrix[j, :]
+        nodes.add(word_node)
 
+    # nodes.print_best()
 
-    # # do a bottom-up search to figure out the french words index sequence for the largest probability
-    # print "index_previousw_matrix", index_previousw_matrix
-    # print "index_currentw_matrix", index_currentw_matrix
-    # final_translation_index_list.append(int(index_currentw_matrix[beam_size-1, beam_size-1]))
-    # for i in range(beam_size-2, -1, -1):
-    #     index = int(index_previousw_matrix[i+1, i+1])
-    #     previous_word_index = index_currentw_matrix[i, index]
-    #     final_translation_index_list.append(int(previous_word_index))
-    # final_translation_index_list.reverse()
-    # return final_translation_index_list
-    return []
+    j = 1
+    while j < max_search:
+
+        previous_indices, previous_word_indices, previous_probabilities, previous_weights = nodes.get_best()
+
+        # No more options, every available indx was EOS
+        if len(previous_word_indices) == 0: break
+        # force break when too many iterations
+        if j == 1000: break
+
+        # get probability vectors and weights after feeding each word to SMT
+        post_probability_set, post_weights = smt.mass_decode(previous_word_indices, previous_weights)
+
+        # calculate all probabilities and put them in concatonated list
+        for i in range(beam_size):
+            temp = np.log(post_probability_set[i]) + previous_probabilities[i]
+            product_vector[:, vocab_size * i:vocab_size * (i + 1)] = temp
+
+        # sort concatonated list and get ordered integers
+        unnormalized_indices = np.argsort(product_vector, kind = 'heapsort')[:, -beam_size:][0]
+
+        # get indices for each word, parent_indices, and the corresponding probabilities
+        new_indices = unnormalized_indices % vocab_size
+        parent_rows = unnormalized_indices / vocab_size
+        probabilities = [post_probability_set[row][0][indx] for row, indx in zip(parent_rows, new_indices)]
+
+        parents = [previous_indices[i] for i in parent_rows]
+        parent_probabilities = [previous_probabilities[i] for i in parent_rows]
+
+        for i in range(beam_size):
+            probability = np.log(probabilities[i])+parent_probabilities[i]
+            indx = new_indices[i]
+            weights = post_weights[i]
+            parent = parents[i]
+            word = feeder.feats2words([indx], "fr")[0]
+            word_node = Node(indx, probability, weights, word)
+            nodes.add(word_node, parent)
+        j += 1
+
+    sequences = nodes.get_sequences()
+    return sequences
 
 
 def test(FLAGS):
@@ -222,21 +240,23 @@ def test(FLAGS):
     hidden_dim = FLAGS.hidden_dim
     beam_size = FLAGS.beam_size
     saved_weights = FLAGS.weights
+    max_beam_search = FLAGS.max_beam_search
 
-    tester = SMT_Tester(en_length, hidden_dim, vocab_size, vocab_size, embedding_size)
+    tester = SMT(en_length, hidden_dim, vocab_size, vocab_size, embedding_size)
     tester.load_weights(saved_weights)
 
     for i in range(10):
         en_indices, _ = test_feeder.get_batch(1, en_length=en_length)
 
         en_indices = np.array(en_indices)
-        fr_indices = en2fr_beam_search(tester, en_indices, beam_size, vocab_size)
+        fr_indix_options = en2fr_beam_search(tester, test_feeder, en_indices, beam_size, vocab_size, max_beam_search)
 
         en_indices=en_indices[0]
         en_sent = test_feeder.feats2words(en_indices)
-        fr_sent = test_feeder.feats2words(fr_indices, "fr")
         print ("en_sent", en_sent)
-        print ("fr_sent", fr_sent)
+        for option in fr_indix_options:
+            fr_sent = test_feeder.feats2words(option, "fr")
+            print "\tfr_sent opt", fr_sent
         # en_sent = indices2sent(en_indices, test_feeder.en_indx2vocab)
         # fr_sent = indices2sent(fr_indices, test_feeder.fr_indx2vocab)
         # print en_indices, en_sent
@@ -267,6 +287,8 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=64, help="Batch size to use during training.")
     
     parser.add_argument("--beam_size", type=int, default=50, help="Batch size to use during training.")
+    parser.add_argument("--max_beam_search", type=int, default=100, help="Max iterations in beam search.")
+
     parser.add_argument("--en_length", type=int, default=40, help="Batch size to use during training.")
     parser.add_argument("--fr_length", type=int, default=50, help="Batch size to use during training.")
     parser.add_argument("--hidden_dim", type=int, default=256, help="Batch size to use during training.")

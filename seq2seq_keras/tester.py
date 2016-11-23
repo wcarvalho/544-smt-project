@@ -2,21 +2,10 @@ from keras.layers import Input, Embedding, LSTM, Dense, merge
 from keras.models import Model
 import numpy as np
 import sys
+import copy
 
 
-
-class Node(object):
-  """docstring for Node"""
-  def __init__(self, probabilties, weights, indices):
-    self.probabilties = probabilties
-    self.indices = indices
-    self.weights = weights
-
-  def function():
-    pass
-
-
-class SMT_Tester(object):
+class SMT(object):
   """docstring for SMT_Tester"""
   def __init__(self, en_input_length, hidden_dim, en_vocab_size, fr_vocab_size, embedding_size=64):
 
@@ -80,23 +69,20 @@ class SMT_Tester(object):
     return probabilties, self.get_decoder_rnn_weights()
 
   def get_decoder_rnn_weights(self): 
-    return self.decoder.layers[1].get_weights()
+    return copy.deepcopy(self.decoder.layers[1].get_weights())
 
   def set_decoder_rnn_weights(self, weights):
     self.decoder.layers[1].set_weights(weights)
 
-  def mass_decode(self, indx_weight_pairs):
+  def mass_decode(self, indices, weights):
     probabilties = []
     post_weights = []
-    # length = len(indx_weight_pairs.shape)
-    # if length == 2: indx_weight_pairs = indx_weight_pairs[0]
-    
-    # original_weights = self.get_decoder_rnn_weights()
-    for indx, weights in indx_weight_pairs:
-      self.set_decoder_rnn_weights(weights)
-      p, w = self.decode(indx)
+
+    for i, w1 in zip(indices, weights):
+      self.set_decoder_rnn_weights(w1)
+      p, w2 = self.decode(i)
       probabilties.append(p)
-      post_weights.append(w)
+      post_weights.append(w2)
 
     return probabilties, post_weights
 
