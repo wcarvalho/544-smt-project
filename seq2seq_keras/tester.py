@@ -3,7 +3,7 @@ from keras.models import Model
 import numpy as np
 import sys
 import copy
-
+from beam_search import en2fr_beam_search, get_best, Node, Graph, get_worst, get_best_indices
 
 class SMT(object):
   """docstring for SMT_Tester"""
@@ -86,8 +86,8 @@ class SMT(object):
 
     return probabilties, post_weights
 
-  def beam_search(en_sentence, beam_size):
+  def beam_search(self, en_sentence, feeder, beam_size, max_search=100, verbosity=0):
+    return en2fr_beam_search(self, feeder, en_sentence, beam_size, self.fr_vocab_size, max_search, verbosity)
 
-    return []
 
 def not_implemented(name): return "'"+name+"' has not yet been implemented!"

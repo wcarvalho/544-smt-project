@@ -86,8 +86,6 @@ class Graph(object):
       parent_indx = parent.get_indx()
       # print "parent", parent
       return self.get_sequence(parent_indx) + [indx]
-    
-
 
 class Node(object):
   """docstring for Node"""
@@ -121,6 +119,74 @@ class Node(object):
     if self.parent is not None:
       return "parent:"+str(self.parent.get_indx())+"\t|word:"+str(self.get_indx()) +" "+ self.word +"\t|probability:"+str(self.probability)
     else: return "word:"+str(self.get_indx()) +" "+ self.word +"\t|probability:"+str(self.probability)
+
+
+def en2fr_beam_search(smt, feeder, en_sentence, beam_size, vocab_size, max_search=100, verbosity=0):
+
+    # initialize matrixs and vectors
+    index_currentw_matrix = np.zeros((beam_size, beam_size)) 
+    index_previousw_matrix = np.zeros((beam_size, beam_size))
+    product_vector = np.zeros((1, beam_size * vocab_size))
+
+    # encode sentence into continuous vector
+    smt.encode(en_sentence)
+    all_probabilities, weights = smt.decode()
+
+    best_indices, best_probabilities = get_best(all_probabilities, beam_size)
+
+    nodes = Graph(max_size=beam_size)
+
+    for indx, probability in zip(best_indices, best_probabilities):
+        word = feeder.feats2words([indx], "fr")[0]
+        word_node = Node(indx, np.log(probability), weights, word)
+
+        nodes.add(word_node)
+
+    if verbosity > 1:
+      nodes.print_best()
+
+    j = 1
+    while j < max_search:
+
+        previous_indices, previous_word_indices, previous_probabilities, previous_weights = nodes.get_best()
+
+        # No more options, every available indx was EOS
+        if len(previous_word_indices) == 0: break
+
+        # get probability vectors and weights after feeding each word to SMT
+        post_probability_set, post_weights = smt.mass_decode(previous_word_indices, previous_weights)
+
+        # calculate all probabilities and put them in concatonated list
+        for i in range(beam_size):
+            temp = np.log(post_probability_set[i]) + previous_probabilities[i]
+            product_vector[:, vocab_size * i:vocab_size * (i + 1)] = temp
+
+        # sort concatonated list and get ordered integers
+        unnormalized_indices = np.argsort(product_vector, kind = 'heapsort')[:, -beam_size:][0]
+
+        # get indices for each word, parent_indices, and the corresponding probabilities
+        new_indices = unnormalized_indices % vocab_size
+        parent_rows = unnormalized_indices / vocab_size
+        probabilities = [post_probability_set[row][0][indx] for row, indx in zip(parent_rows, new_indices)]
+
+        parents = [previous_indices[i] for i in parent_rows]
+        parent_probabilities = [previous_probabilities[i] for i in parent_rows]
+
+        for i in range(beam_size):
+            probability = np.log(probabilities[i])+parent_probabilities[i]
+            indx = new_indices[i]
+            weights = post_weights[i]
+            parent = parents[i]
+            word = feeder.feats2words([indx], "fr")[0]
+            word_node = Node(indx, probability, weights, word)
+            nodes.add(word_node, parent)
+        j += 1
+        if verbosity > 1:
+          nodes.print_best()
+
+
+    sequences = nodes.get_sequences()
+    return sequences
 
 def get_best_multiple(array, beam_size, N):
 
