@@ -56,6 +56,7 @@ class Graph(object):
   def print_best(self):
     for i in self.get_best_queue(): print self.map[i[NI]]
 
+  # returns a sorted list of values
   def get_best_queue(self): 
     l = list(self.queue)
     sor = sorted(l, key=lambda x: x[PI], reverse=True)
@@ -107,12 +108,10 @@ class Node(object):
 
   def get_indx(self): return self.number
   def get_word_indx(self): return self.word_indx
-  # def get_number(self): return self.number
   def get_word(self): return self.word
   def get_weights(self): return self.weights
   def get_probability(self): return self.probability
   def get_parent(self): return self.parent
-
   def delete_weights(self): del self.weights
 
   def __str__(self): 
