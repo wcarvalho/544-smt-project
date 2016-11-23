@@ -142,6 +142,7 @@ def en2fr_beam_search(smt, feeder, en_sentence, beam_size, vocab_size, max_searc
         nodes.add(word_node)
 
     if verbosity > 0:
+      print (j)
       nodes.print_best()
 
     j = 1
@@ -156,6 +157,7 @@ def en2fr_beam_search(smt, feeder, en_sentence, beam_size, vocab_size, max_searc
         post_probability_set, post_weights = smt.mass_decode(previous_word_indices, previous_weights)
 
         noptions = len(post_probability_set)
+        if noptions == 0: break
         # calculate all probabilities and put them in concatonated list
         for i in range(noptions):
             temp = np.log(post_probability_set[i]) + previous_probabilities[i]
@@ -182,6 +184,7 @@ def en2fr_beam_search(smt, feeder, en_sentence, beam_size, vocab_size, max_searc
             nodes.add(word_node, parent)
         j += 1
         if verbosity > 1:
+          print (j)
           nodes.print_best()
 
 
