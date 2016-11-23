@@ -150,7 +150,7 @@ def train_auto(FLAGS):
     print(model_train.summary())
 
     # tensorboard callback
-    tb_callback = MyTensorBoard(log_dir='../logs', histogram_freq=0, write_graph=False, write_images=False)
+    tb_callback = MyTensorBoard(log_dir='../logs', histogram_freq=0, write_graph=False, write_images=False, flags=FLAGS)
     # check point callback
     cp_callback = ModelCheckpoint(filepath="../logs/weights.{epoch:02d}-{val_loss:.2f}.hdf5",
                                   monitor='val_loss',
@@ -198,8 +198,8 @@ def test(FLAGS):
         # print fr_indices, fr_sent
         break
     # print (final_translation_index_list)
-        # output is a french sentence which will be used 
-    # once done, 
+        # output is a french sentence which will be used
+    # once done,
 
 
 # FIXME
