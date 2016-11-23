@@ -156,7 +156,7 @@ def en2fr_beam_search(smt, feeder, en_sentence, beam_size, vocab_size, max_searc
         post_probability_set, post_weights = smt.mass_decode(previous_word_indices, previous_weights)
 
         # calculate all probabilities and put them in concatonated list
-        for i in range(beam_size):
+        for i in range(len(post_probability_set)):
             temp = np.log(post_probability_set[i]) + previous_probabilities[i]
             product_vector[:, vocab_size * i:vocab_size * (i + 1)] = temp
 
