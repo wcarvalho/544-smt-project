@@ -142,7 +142,6 @@ def en2fr_beam_search(smt, feeder, en_sentence, beam_size, vocab_size, max_searc
         nodes.add(word_node)
 
     if verbosity > 0:
-      print (j)
       nodes.print_best()
 
     j = 1

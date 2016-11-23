@@ -16,14 +16,14 @@ class MyTensorBoard(TensorBoard):
                                  prefix="newstest2013",
                                  vocab_size=self.FLAGS.vocab_size)
 
+
     def test(self):
 
         saved_weights = "temp.ckpt"
-        self.model.save(saved_weights)
+        self.model.save(saved_weights, overwrite=True)
 
         vocab_size = self.FLAGS.vocab_size
         embedding_size = self.FLAGS.embedding_size
-
 
         en_length = self.FLAGS.en_length
         hidden_dim = self.FLAGS.hidden_dim
@@ -32,15 +32,16 @@ class MyTensorBoard(TensorBoard):
         tester = SMT(en_length, hidden_dim, vocab_size, vocab_size, embedding_size)
         tester.load_weights(saved_weights)
 
-        for i in range(10):
+        for i in range(5):
+            print("\nstart beam search...")
             en_sentence, _ = self.test_feeder.get_batch(1, en_length=en_length)
             en_sentence = np.array(en_sentence)
-            print("\nstart beam search...")
+            en_str = self.test_feeder.feats2words(en_sentence[0], language='en', skip_special_tokens=True)
+            print(" ".join(en_str))
             fr_sentence = tester.beam_search(en_sentence, self.test_feeder, beam_size=beam_size, verbosity=1)
-            en_sentence = en_sentence[0]
-            fr_sentence = fr_sentence[0]
-            print self.test_feeder.feats2words(en_sentence, language='en', skip_special_tokens=True)
-            print self.test_feeder.feats2words(fr_sentence, language='fr', skip_special_tokens=True)
+            for fr in fr_sentence:
+                fr_str = self.test_feeder.feats2words(fr, language='fr', skip_special_tokens=True)
+                print(" ".join(fr_str))
 
 
     def on_batch_end(self, batch, logs={}):
