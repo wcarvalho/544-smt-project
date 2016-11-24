@@ -159,7 +159,10 @@ def en2fr_beam_search(smt, feeder, en_sentence, beam_size, vocab_size, max_searc
         if noptions == 0: break
         # calculate all probabilities and put them in concatonated list
         for i in range(noptions):
-            temp = np.log(post_probability_set[i]) + previous_probabilities[i]
+            # FIXME I wonder if we should add previous_probabilities to each candidate word, after all
+            # beam search is a sort of greedy algorithm, for each candidate we should not consider
+            # the total probability of the path from root to current leaf
+            temp = np.log(post_probability_set[i]) # + previous_probabilities[i]
             product_vector[:, vocab_size * i:vocab_size * (i + 1)] = temp
 
         # sort concatonated list and get ordered integers

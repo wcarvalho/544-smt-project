@@ -43,6 +43,10 @@ class MyTensorBoard(TensorBoard):
                 fr_str = self.test_feeder.feats2words(fr, language='fr', skip_special_tokens=True)
                 print(" ".join(fr_str))
 
+        try:
+            os.remove(saved_weights)
+        except OSError:
+            pass
 
     def on_batch_end(self, batch, logs={}):
         if (batch + 1) % 100 == 0:
