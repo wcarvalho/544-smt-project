@@ -120,7 +120,7 @@ class Node(object):
     else: return "word:"+str(self.get_indx()) +" "+ self.word +"\t|probability:"+str(self.probability)
 
 
-def en2fr_beam_search(smt, feeder, en_sentence, beam_size, vocab_size, max_search=100, verbosity=0):
+def en2fr_beam_search(smt, feeder, en_sentence, beam_size, vocab_size, max_search=50, verbosity=0):
 
     # initialize matrixs and vectors
     index_currentw_matrix = np.zeros((beam_size, beam_size)) 

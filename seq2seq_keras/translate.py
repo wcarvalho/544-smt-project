@@ -99,7 +99,7 @@ def train():
 
     # TODO: should call test_feeder.get_batch() once to get the entire test set, which is reasonably small.
 
-    en_length, fr_length, hidden_dim = 40, 50, 256
+    en_length, fr_length, hidden_dim = FLAGS.en_length, FLAGS.fr_length, 256
     model_train = create_model(FLAGS.vocab_size, en_length, fr_length, hidden_dim)
     model_test = create_model_test(FLAGS.vocab_size, hidden_dim)
     model_train.compile(optimizer='rmsprop', loss='categorical_crossentropy')
@@ -140,7 +140,7 @@ def train_auto(FLAGS):
     #                          prefix="newstest2013",
     #                          vocab_size=FLAGS.vocab_size)
 
-    en_length, fr_length, hidden_dim = 20, 25, 256
+    en_length, fr_length, hidden_dim = FLAGS.en_length, FLAGS.fr_length, 256
     source, target = train_feeder.get_batch(FLAGS.max_train_data_size, en_length=en_length, fr_length=fr_length)
     source, target = np.asarray(source), np.asarray(target)
     target_output = np.expand_dims(target, -1)
@@ -224,8 +224,8 @@ if __name__ == "__main__":
     parser.add_argument("--beam_size", type=int, default=50, help="Batch size to use during training.")
     parser.add_argument("--max_beam_search", type=int, default=100, help="Max iterations in beam search.")
 
-    parser.add_argument("--en_length", type=int, default=40, help="Batch size to use during training.")
-    parser.add_argument("--fr_length", type=int, default=50, help="Batch size to use during training.")
+    parser.add_argument("--en_length", type=int, default=20, help="Batch size to use during training.")
+    parser.add_argument("--fr_length", type=int, default=25, help="Batch size to use during training.")
     parser.add_argument("--hidden_dim", type=int, default=256, help="Batch size to use during training.")
     
 
