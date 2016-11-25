@@ -33,15 +33,19 @@ class MyTensorBoard(TensorBoard):
         tester.load_weights(saved_weights)
 
         for i in range(5):
-            print("\nstart beam search...")
-            en_sentence, _ = self.test_feeder.get_batch(1, en_length=en_length)
+            en_sentence, cr_fr_sentence = self.test_feeder.get_batch(1, en_length=en_length)
             en_sentence = np.array(en_sentence)
+            cr_fr_sentence = np.array(cr_fr_sentence)
             en_str = self.test_feeder.feats2words(en_sentence[0], language='en', skip_special_tokens=True)
-            print(" ".join(en_str))
-            fr_sentence = tester.beam_search(en_sentence, self.test_feeder, beam_size=beam_size, verbosity=1)
+            fr_l = fr_length(cr_fr_sentence[0])
+            print("en: "+" ".join(en_str))
+            print "frl:", fr_l
+            # print 'fr shape: ', np.array(cr_fr_sentence).shape
+            fr_sentence = tester.beam_search(en_sentence, self.test_feeder, beam_size=beam_size, max_search=fr_l, verbosity=self.FLAGS.verbosity)
+            print("fr re: "+" ".join(self.test_feeder.feats2words(cr_fr_sentence[0], language='fr', skip_special_tokens=True)))
             for fr in fr_sentence:
                 fr_str = self.test_feeder.feats2words(fr, language='fr', skip_special_tokens=True)
-                print(" ".join(fr_str))
+                print("fr: "+" ".join(fr_str))
 
         try:
             os.remove(saved_weights)
@@ -68,6 +72,14 @@ class MyTensorBoard(TensorBoard):
         if (batch + 1) % 100 == 0:
             self.test()
 
+
+def fr_length(fr_indices):
+    i = 0
+    for indx in fr_indices:
+        if indx == 0: break
+        i=i+1
+
+    return i
 
 
 # class MyModelCheckpoint(ModelCheckpoint):

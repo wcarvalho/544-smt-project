@@ -33,7 +33,11 @@ from keras.layers.recurrent import LSTM
 from keras.layers.wrappers import TimeDistributed
 from keras.models import Model
 from keras.callbacks import TensorBoard, ModelCheckpoint
+
+import tensorflow as tf
+sess = tf.Session()
 from keras import backend as K
+K.set_session(sess)
 
 # FIXME: this is sloppy, whoever did this
 from data_feeder import *
@@ -99,7 +103,7 @@ def train():
 
     # TODO: should call test_feeder.get_batch() once to get the entire test set, which is reasonably small.
 
-    en_length, fr_length, hidden_dim = FLAGS.en_length, FLAGS.fr_length, 256
+    en_length, fr_length, hidden_dim = FLAGS.en_length, FLAGS.fr_length, FLAGS.hidden_dim
     model_train = create_model(FLAGS.vocab_size, en_length, fr_length, hidden_dim)
     model_test = create_model_test(FLAGS.vocab_size, hidden_dim)
     model_train.compile(optimizer='rmsprop', loss='categorical_crossentropy')
@@ -140,7 +144,7 @@ def train_auto(FLAGS):
     #                          prefix="newstest2013",
     #                          vocab_size=FLAGS.vocab_size)
 
-    en_length, fr_length, hidden_dim = FLAGS.en_length, FLAGS.fr_length, 256
+    en_length, fr_length, hidden_dim = FLAGS.en_length, FLAGS.fr_length, FLAGS.hidden_dim
     source, target = train_feeder.get_batch(FLAGS.max_train_data_size, en_length=en_length, fr_length=fr_length)
     source, target = np.asarray(source), np.asarray(target)
     target_output = np.expand_dims(target, -1)
@@ -158,12 +162,10 @@ def train_auto(FLAGS):
                                   mode="auto")
     model_train.fit([source, target], target_output, validation_split=0.1, nb_epoch=1, callbacks=[tb_callback, cp_callback])
 
-# fr_indices = smt.beam_search(en_sentence, beam_size)
 
-
-
-
-def test(FLAGS):
+# FIXME
+# * how will we give input to decoder? text file? command line?
+def decode(FLAGS):
     vocab_size = FLAGS.vocab_size
     embedding_size = FLAGS.embedding_size
 
@@ -184,7 +186,7 @@ def test(FLAGS):
         en_indices, _ = test_feeder.get_batch(1, en_length=en_length)
 
         en_indices = np.array(en_indices)
-        fr_indix_options = tester.beam_search(en_indices, test_feeder, beam_size, max_beam_search, verbosity=0)
+        fr_indix_options = tester.beam_search(en_indices, test_feeder, beam_size, max_beam_search, verbosity=FLAGS.verbosity)
 
         en_indices=en_indices[0]
         en_sent = test_feeder.feats2words(en_indices)
@@ -201,11 +203,6 @@ def test(FLAGS):
         # output is a french sentence which will be used
     # once done,
 
-
-# FIXME
-# * how will we give input to decoder? text file? command line?
-def decode(FLAGS):
-    test(FLAGS)
 
 def indices2sent(indices, indx2vocab):
     str = ""
@@ -238,12 +235,16 @@ if __name__ == "__main__":
     parser.add_argument("--decode", action='store_true', default=False, help="Set for interactive decoding.")
     parser.add_argument("--plot_name", type=str, help="base name for plots")
     parser.add_argument("--weights", type=str, help="weights file to load weights")
+
+    parser.add_argument("-v", "--verbosity", type=int, default=0)
+
     FLAGS = parser.parse_args()
     print(FLAGS)
 
-    if FLAGS.plot_name:
-        from keras.utils.visualize_util import plot
-    if FLAGS.decode:
-        decode(FLAGS)
-    else:
-        train_auto(FLAGS)
+    with sess.as_default():
+        if FLAGS.plot_name:
+            from keras.utils.visualize_util import plot
+        if FLAGS.decode:
+            decode(FLAGS)
+        else:
+            train_auto(FLAGS)

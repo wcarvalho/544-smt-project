@@ -1,5 +1,7 @@
 from keras.layers import Input, Embedding, LSTM, Dense, merge
 from keras.models import Model
+from keras import backend as K
+
 import numpy as np
 import sys
 import copy
@@ -9,11 +11,13 @@ class SMT(object):
   """docstring for SMT_Tester"""
   def __init__(self, en_input_length, hidden_dim, en_vocab_size, fr_vocab_size, embedding_size=64):
 
+
     self.en_input_length = en_input_length
     self.hidden_dim = hidden_dim
     self.en_vocab_size = en_vocab_size
     self.fr_vocab_size = fr_vocab_size
     self.embedding_size = embedding_size
+
 
     self._build_encoder(en_input_length, hidden_dim, en_vocab_size, embedding_size)
     self._build_decoder(hidden_dim, fr_vocab_size, embedding_size)
@@ -33,8 +37,9 @@ class SMT(object):
 
   def _build_decoder(self, hidden_dim, vocab_size, embedding_size=64):
     decoder_input = Input(batch_shape=(1, 1, embedding_size+hidden_dim), name='decoder_input')
-    z = LSTM(hidden_dim, name='hidden_z', stateful=True)(decoder_input)
-    p = Dense(vocab_size, activation='softmax', name='prob')(z)
+    self.z = LSTM(hidden_dim, name='hidden_z', stateful=True)
+    z_out = self.z(decoder_input)
+    p = Dense(vocab_size, activation='softmax', name='prob')(z_out)
     self.decoder = Model([decoder_input], [p])
     return self.decoder
 
@@ -66,7 +71,7 @@ class SMT(object):
     if word_indx is None: batch = self._make_initial_batch()
     else: batch = self._make_regular_batch(word_indx)
     probabilties = self.decoder.predict(batch)
-    return probabilties, self.get_decoder_rnn_weights()
+    return probabilties, self.get_decoder_rnn_states()
 
   def get_decoder_rnn_weights(self): 
     return copy.deepcopy(self.decoder.layers[1].get_weights())
@@ -74,17 +79,27 @@ class SMT(object):
   def set_decoder_rnn_weights(self, weights):
     self.decoder.layers[1].set_weights(weights)
 
-  def mass_decode(self, indices, weights):
+  def get_decoder_rnn_states(self):
+    return copy.deepcopy([i.eval() for i in self.z.states])
+
+  def set_decoder_rnn_states(self, states):
+    for i in range(len(states)):
+      self.z.states[i].assign(states[i]).eval()
+
+  def reset_states(self):
+    self.decoder.layers[1].reset_states()
+
+  def mass_decode(self, indices, states):
     probabilties = []
-    post_weights = []
+    post_states = []
 
-    for i, w1 in zip(indices, weights):
-      self.set_decoder_rnn_weights(w1)
-      p, w2 = self.decode(i)
+    for i, s1 in zip(indices, states):
+      self.set_decoder_rnn_states(s1)
+      p, s2 = self.decode(i)
       probabilties.append(p)
-      post_weights.append(w2)
+      post_states.append(s2)
 
-    return probabilties, post_weights
+    return probabilties, post_states
 
   def beam_search(self, en_sentence, feeder, beam_size, max_search=100, verbosity=0):
     return en2fr_beam_search(self, feeder, en_sentence, beam_size, self.fr_vocab_size, max_search, verbosity)
