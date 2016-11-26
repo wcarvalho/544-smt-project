@@ -7,6 +7,7 @@ import re
 import argparse
 import os.path
 from tensorflow.python.platform import gfile
+import numpy as np
 
 # Special vocabulary symbols - we always put them at the start.
 _PAD = b"_PAD"
@@ -33,6 +34,7 @@ class DataFeeder:
         self.en_vocab_inv, self.fr_vocab_inv = {}, {}
         self.en_data, self.fr_data = [], []
         self.pos = 0
+        self.rand_idx = None
         self.vocab_size = vocab_size
         self.fr_raw_path = os.path.join(data_dir, prefix) + ".fr"
         self.en_raw_path = os.path.join(data_dir, prefix) + ".en"
@@ -89,14 +91,29 @@ class DataFeeder:
         return words
 
 
+    def get_size(self):
+        if not self.en_data:
+            raise Exception("Data is not loaded!")
+        return len(self.en_data)
+
+
+    def produce(self, batch_size=64):
+        while 1:
+            en, fr = self.get_batch(batch_size)
+            en, fr = np.asarray(en), np.asarray(fr)
+            yield ([en, fr], np.expand_dims(fr, -1))
+
+
     def get_batch(self, batch_size=64, en_length=40, fr_length=50):
         en = []
         fr = []
+        if self.pos + batch_size >= len(self.en_data) - 1:
+            self.pos = 0
+        if self.pos == 0:
+            self.rand_idx = np.random.permutation(self.get_size())
         for i in range(batch_size):
-            if self.pos + i > len(self.en_data)-1:
-                self.pos = 0
-            tmp_en = self.en_data[self.pos + i]
-            tmp_fr = self.fr_data[self.pos + i]
+            tmp_en = self.en_data[self.rand_idx[self.pos + i]]
+            tmp_fr = self.fr_data[self.rand_idx[self.pos + i]]
             while(len(tmp_en) < en_length):
                 tmp_en.append(0)
             tmp_en = list(reversed(tmp_en))
@@ -250,7 +267,7 @@ if __name__ == "__main__":
     print("English data size %d" % len(df.en_data))
     print("French data size %d" % len(df.fr_data))
 
-    en, fr = df.get_batch(10)
+    ([en, fr], _) = next(df.produce())
     print("Requested batch size: %d" % 10)
     print("English batch size %d" % len(en))
     print("French batch size %d" % len(fr))

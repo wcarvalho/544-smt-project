@@ -135,6 +135,7 @@ def train():
 
 def train_auto(FLAGS):
     # Prepare WMT data
+    FLAGS.max_train_data_size = FLAGS.max_train_data_size / FLAGS.batch_size * FLAGS.batch_size
     train_feeder = DataFeeder(data_dir=FLAGS.data_dir,
                               prefix="giga-fren.release2",
                               vocab_size=FLAGS.vocab_size,
@@ -145,9 +146,9 @@ def train_auto(FLAGS):
     #                          vocab_size=FLAGS.vocab_size)
 
     en_length, fr_length, hidden_dim = FLAGS.en_length, FLAGS.fr_length, FLAGS.hidden_dim
-    source, target = train_feeder.get_batch(FLAGS.max_train_data_size, en_length=en_length, fr_length=fr_length)
-    source, target = np.asarray(source), np.asarray(target)
-    target_output = np.expand_dims(target, -1)
+    #source, target = train_feeder.get_batch(FLAGS.max_train_data_size, en_length=en_length, fr_length=fr_length)
+    #source, target = np.asarray(source), np.asarray(target)
+    #target_output = np.expand_dims(target, -1)
 
     model_train = create_model(FLAGS.vocab_size, en_length, fr_length, hidden_dim)
     model_train.compile(optimizer='rmsprop', loss='sparse_categorical_crossentropy') # , metrics=['kullback_leibler_divergence']
@@ -156,11 +157,12 @@ def train_auto(FLAGS):
     # tensorboard callback
     tb_callback = MyTensorBoard(log_dir='../logs', histogram_freq=0, write_graph=False, write_images=False, flags=FLAGS)
     # check point callback
-    cp_callback = ModelCheckpoint(filepath="../logs/weights.{epoch:02d}-{val_loss:.2f}.hdf5",
-                                  monitor='val_loss',
-                                  verbose = 0,
-                                  mode="auto")
-    model_train.fit([source, target], target_output, validation_split=0.1, nb_epoch=1, callbacks=[tb_callback, cp_callback])
+    # cp_callback = ModelCheckpoint(filepath="../logs/weights.{epoch:02d}-{val_loss:.2f}.hdf5",
+    #                               monitor='val_loss',
+    #                               verbose = 0,
+    #                               mode="auto")
+    model_train.fit_generator(train_feeder.produce(FLAGS.batch_size), samples_per_epoch=train_feeder.get_size(),
+                              nb_epoch=5, callbacks=[tb_callback])
 
 
 # FIXME
@@ -221,8 +223,8 @@ if __name__ == "__main__":
     parser.add_argument("--beam_size", type=int, default=50, help="Batch size to use during training.")
     parser.add_argument("--max_beam_search", type=int, default=100, help="Max iterations in beam search.")
 
-    parser.add_argument("--en_length", type=int, default=20, help="Batch size to use during training.")
-    parser.add_argument("--fr_length", type=int, default=25, help="Batch size to use during training.")
+    parser.add_argument("--en_length", type=int, default=40, help="Padded EN length to use during training.")
+    parser.add_argument("--fr_length", type=int, default=50, help="Padded FR length to use during training.")
     parser.add_argument("--hidden_dim", type=int, default=256, help="Batch size to use during training.")
     
 
