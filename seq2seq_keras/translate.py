@@ -151,7 +151,8 @@ def train_auto(FLAGS):
     #target_output = np.expand_dims(target, -1)
 
     model_train = create_model(FLAGS.vocab_size, en_length, fr_length, hidden_dim)
-    model_train.compile(optimizer='rmsprop', loss='sparse_categorical_crossentropy') # , metrics=['kullback_leibler_divergence']
+    model_train.compile(optimizer='rmsprop', loss='sparse_categorical_crossentropy',
+                        sample_weight_mode="temporal")
     print(model_train.summary())
 
     # tensorboard callback

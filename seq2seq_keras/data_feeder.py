@@ -103,8 +103,9 @@ class DataFeeder:
             fr_target = [seq[1:]+[0] for seq in fr]
             en, fr = np.asarray(en), np.asarray(fr)
             fr_target = np.asarray(fr_target)
+            weights = (fr_target != 0).astype(int)
             fr_target = np.expand_dims(fr_target, -1)
-            yield ([en, fr], fr_target)
+            yield ([en, fr], fr_target, weights)
 
 
     def get_batch(self, batch_size=64, en_length=40, fr_length=50):
