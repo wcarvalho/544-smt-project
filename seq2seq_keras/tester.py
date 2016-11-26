@@ -110,10 +110,13 @@ class SMT(object):
     self.encode(en_sentence)
     probabilties, weights = self.decode()
     best_indices, best_probabilities = get_best(probabilties, 1)
+    del probabilties
     word_indices = list(best_indices)
     for i in range(1, length):
       probabilties, weights = self.decode(best_indices)
+      del weights
       best_indices, best_probabilities = get_best(probabilties, 1)
+      del probabilties
       word_indices.append(best_indices[0])
 
     return [word_indices]
