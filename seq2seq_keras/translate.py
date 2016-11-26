@@ -155,6 +155,9 @@ def train_auto(FLAGS):
                         sample_weight_mode="temporal")
     print(model_train.summary())
 
+    if FLAGS.weights:
+        model_train.load_weights(FLAGS.weights)
+
     # tensorboard callback
     tb_callback = MyTensorBoard(log_dir='../logs', histogram_freq=0, write_graph=False, write_images=False, flags=FLAGS)
     # check point callback

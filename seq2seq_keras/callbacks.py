@@ -32,7 +32,7 @@ class MyTensorBoard(TensorBoard):
         tester = SMT(en_length, hidden_dim, vocab_size, vocab_size, embedding_size)
         tester.load_weights(saved_weights)
 
-        for i in range(5):
+        for i in range(20):
             en_sentence, cr_fr_sentence = self.test_feeder.get_batch(1, en_length=en_length)
             en_sentence[0].reverse()
             en_sentence = np.array(en_sentence)
@@ -41,13 +41,14 @@ class MyTensorBoard(TensorBoard):
             fr_l = fr_length(cr_fr_sentence[0])
             print("\nen: "+" ".join(en_str))
 
+            print("fr_re len=%d: " % fr_l + " ".join(self.test_feeder.feats2words(cr_fr_sentence[0], language='fr', skip_special_tokens=True)))
+
             # fr_sentence = tester.beam_search(en_sentence, self.test_feeder, beam_size=beam_size, max_search=fr_l, verbosity=self.FLAGS.verbosity)
 
-            fr_sentence = tester.greedy_search(en_sentence, fr_l, self.FLAGS.verbosity)
-            print("fr re: "+" ".join(self.test_feeder.feats2words(cr_fr_sentence[0], language='fr', skip_special_tokens=True)), len(cr_fr_sentence[0]))
+            fr_sentence = tester.greedy_search(en_sentence, self.FLAGS.fr_length, self.FLAGS.verbosity)
             for fr in fr_sentence:
-                fr_str = self.test_feeder.feats2words(fr, language='fr', skip_special_tokens=False)
-                print("fr: "+" ".join(fr_str), len(fr_str))
+                fr_str = self.test_feeder.feats2words(fr, language='fr', skip_special_tokens=True)
+                print("fr len=%d: " % fr_length(fr_str) + " ".join(fr_str))
 
         try:
             os.remove(saved_weights)

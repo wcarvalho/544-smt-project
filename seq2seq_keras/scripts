@@ -6,3 +6,9 @@ python ./translate.py --data_dir ../wmt --train_dir ../cache  --max_train_data_s
 
 # logging
 #tensorboard --logdir=./logs
+
+# actual training parameters
+--data_dir ../wmt --train_dir ../cache  --max_train_data_size=10000000 --vocab_size=20000 --beam_size=2 -v=1 --validation_frequency=200 --save_frequency=1000
+
+#quick and dirty
+--data_dir ../wmt --train_dir ../cache  --max_train_data_size=10000 --vocab_size=10000 --beam_size=2 -v=1 --validation_frequency=20 --save_frequency=1000
