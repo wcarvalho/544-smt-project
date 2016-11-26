@@ -40,13 +40,14 @@ class MyTensorBoard(TensorBoard):
             en_str = self.test_feeder.feats2words(en_sentence[0], language='en', skip_special_tokens=True)
             fr_l = fr_length(cr_fr_sentence[0])
             print("\nen: "+" ".join(en_str))
-            print "frl:", fr_l
-            # print 'fr shape: ', np.array(cr_fr_sentence).shape
-            fr_sentence = tester.beam_search(en_sentence, self.test_feeder, beam_size=beam_size, max_search=fr_l, verbosity=self.FLAGS.verbosity)
-            print("fr re: "+" ".join(self.test_feeder.feats2words(cr_fr_sentence[0], language='fr', skip_special_tokens=True)))
+
+            # fr_sentence = tester.beam_search(en_sentence, self.test_feeder, beam_size=beam_size, max_search=fr_l, verbosity=self.FLAGS.verbosity)
+
+            fr_sentence = tester.greedy_search(en_sentence, fr_l, self.FLAGS.verbosity)
+            print("fr re: "+" ".join(self.test_feeder.feats2words(cr_fr_sentence[0], language='fr', skip_special_tokens=True)), len(cr_fr_sentence[0]))
             for fr in fr_sentence:
                 fr_str = self.test_feeder.feats2words(fr, language='fr', skip_special_tokens=False)
-                print("fr: "+" ".join(fr_str))
+                print("fr: "+" ".join(fr_str), len(fr_str))
 
         try:
             os.remove(saved_weights)
@@ -66,11 +67,11 @@ class MyTensorBoard(TensorBoard):
                 self.writer.add_summary(summary, batch)
             self.writer.flush()
 
-        if (batch + 1) % 5000 == 0:
+        if (batch + 1) % self.FLAGS.save_frequency == 0:
             save_path = "model-%d.ckpt" % (batch + 1)
             self.model.save(os.path.join(self.log_dir, save_path))
 
-        if (batch + 1) % 1000 == 0:
+        if (batch + 1) % self.FLAGS.validation_frequency == 0:
             self.test()
 
 

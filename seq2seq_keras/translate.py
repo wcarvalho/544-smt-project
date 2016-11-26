@@ -162,7 +162,7 @@ def train_auto(FLAGS):
     #                               verbose = 0,
     #                               mode="auto")
     model_train.fit_generator(train_feeder.produce(FLAGS.batch_size), samples_per_epoch=train_feeder.get_size(),
-                              nb_epoch=5, callbacks=[tb_callback])
+                              nb_epoch=FLAGS.epochs, callbacks=[tb_callback])
 
 
 # FIXME
@@ -237,7 +237,9 @@ if __name__ == "__main__":
     parser.add_argument("--decode", action='store_true', default=False, help="Set for interactive decoding.")
     parser.add_argument("--plot_name", type=str, help="base name for plots")
     parser.add_argument("--weights", type=str, help="weights file to load weights")
-
+    parser.add_argument("--validation_frequency", type=int, help="how often to do validation", default=1000)
+    parser.add_argument("--save_frequency", type=int, help="how often to do validation", default=5000)
+    parser.add_argument("-e", "--epochs", type=int, help="how often to do validation", default=5)
     parser.add_argument("-v", "--verbosity", type=int, default=0)
 
     FLAGS = parser.parse_args()

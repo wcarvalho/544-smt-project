@@ -68,10 +68,11 @@ class SMT(object):
     return np.array([np.concatenate([self.recurrent_h,embedded],axis=-1)])
 
   def decode(self, word_indx = None):
-    if word_indx is None: batch = self._make_initial_batch()
+    # if word_indx is None: batch = self._make_initial_batch()
+    if word_indx is None: batch = self._make_regular_batch(1)
     else: batch = self._make_regular_batch(word_indx)
     probabilties = self.decoder.predict(batch)
-    return probabilties, self.get_decoder_rnn_states()
+    return copy.deepcopy(probabilties), copy.deepcopy(self.get_decoder_rnn_states())
 
   def get_decoder_rnn_weights(self): 
     return copy.deepcopy(self.decoder.layers[1].get_weights())
@@ -80,7 +81,7 @@ class SMT(object):
     self.decoder.layers[1].set_weights(weights)
 
   def get_decoder_rnn_states(self):
-    return copy.deepcopy([i.eval() for i in self.z.states])
+    return [i.eval() for i in self.z.states]
 
   def set_decoder_rnn_states(self, states):
     for i in range(len(states)):
@@ -103,6 +104,19 @@ class SMT(object):
 
   def beam_search(self, en_sentence, feeder, beam_size, max_search=100, verbosity=0):
     return en2fr_beam_search(self, feeder, en_sentence, beam_size, self.fr_vocab_size, max_search, verbosity)
+
+  def greedy_search(self, en_sentence, length, verbosity=0):
+    self.reset_states()
+    self.encode(en_sentence)
+    probabilties, weights = self.decode()
+    best_indices, best_probabilities = get_best(probabilties, 1)
+    word_indices = list(best_indices)
+    for i in range(1, length):
+      probabilties, weights = self.decode(best_indices)
+      best_indices, best_probabilities = get_best(probabilties, 1)
+      word_indices.append(best_indices[0])
+
+    return [word_indices]
 
 
 def not_implemented(name): return "'"+name+"' has not yet been implemented!"
