@@ -7,9 +7,20 @@ import sys
 import copy
 from beam_search import en2fr_beam_search, get_best, Node, Graph, get_worst, get_best_indices
 
+def stacked_lstm(input, hidden_dim, return_sequences, stateful, name, N):
+    if N == 1: return LSTM(hidden_dim, return_sequences=return_sequences, stateful=stateful, name=name+"1")(input)
+
+    h = LSTM(hidden_dim, return_sequences=True, stateful=stateful, name=name+"1")(input)
+    if N > 2:
+        for i in range(1, N-1):
+            h = LSTM(hidden_dim, return_sequences=True, stateful=stateful, name=name+str(i+1))(h)
+    h = LSTM(hidden_dim, return_sequences=return_sequences, stateful=stateful, name=name+str(N))(h)
+
+    return h
+
 class SMT(object):
   """docstring for SMT_Tester"""
-  def __init__(self, en_input_length, hidden_dim, en_vocab_size, fr_vocab_size, embedding_size=64):
+  def __init__(self, en_input_length, hidden_dim, en_vocab_size, fr_vocab_size, embedding_size=64, num_layers=1):
 
 
     self.en_input_length = en_input_length
@@ -17,29 +28,35 @@ class SMT(object):
     self.en_vocab_size = en_vocab_size
     self.fr_vocab_size = fr_vocab_size
     self.embedding_size = embedding_size
+    self.num_layers = num_layers
 
 
-    self._build_encoder(en_input_length, hidden_dim, en_vocab_size, embedding_size)
-    self._build_decoder(hidden_dim, fr_vocab_size, embedding_size)
+    self._build_encoder(en_input_length, hidden_dim, en_vocab_size, embedding_size, num_layers)
+    self._build_decoder(hidden_dim, fr_vocab_size, embedding_size, num_layers)
     self._build_fr_word_embedder(fr_vocab_size, embedding_size)
+
+    # self.map = {layer.name: layer for layer in self.decoder.layers}
+
 
   def load_weights(self, weights):
     if weights is None: return
     self.encoder.load_weights(weights, by_name=True)
     self.decoder.load_weights(weights, by_name=True)
 
-  def _build_encoder(self, input_length, hidden_dim, vocab_size, embedding_size=64):
+  def _build_encoder(self, input_length, hidden_dim, vocab_size, embedding_size=64, num_layers=1):
     en = Input(shape=(input_length,), name='en_input_w')
     s = Embedding(vocab_size, embedding_size, input_length=input_length, mask_zero=True, name='en_embed_s')(en)
-    h = LSTM(hidden_dim, return_sequences=False, name='hidden_h')(s)
+    h = stacked_lstm(s, hidden_dim, False, False, "hidden_h", num_layers)
+    # h = LSTM(hidden_dim, return_sequences=False, name='hidden_h')(s)
     self.encoder = Model([en], [h])
     return self.encoder
 
-  def _build_decoder(self, hidden_dim, vocab_size, embedding_size=64):
+  def _build_decoder(self, hidden_dim, vocab_size, embedding_size=64, num_layers=1):
     decoder_input = Input(batch_shape=(1, 1, embedding_size+hidden_dim), name='decoder_input')
-    self.z = LSTM(hidden_dim, name='hidden_z', stateful=True)
-    z_out = self.z(decoder_input)
-    p = Dense(vocab_size, activation='softmax', name='prob')(z_out)
+    self.z = stacked_lstm(decoder_input, hidden_dim, False, True, "hidden_z", num_layers)
+    # LSTM(hidden_dim, name='hidden_z', stateful=True)
+    # z_out = self.z(decoder_input)
+    p = Dense(vocab_size, activation='softmax', name='prob')(self.z)
     self.decoder = Model([decoder_input], [p])
     return self.decoder
 
@@ -75,22 +92,26 @@ class SMT(object):
     probabilties = self.decoder.predict(batch)
     return copy.deepcopy(probabilties), copy.deepcopy(self.get_decoder_rnn_states())
 
-  def get_decoder_rnn_weights(self): 
-    return copy.deepcopy(self.decoder.layers[1].get_weights())
-
-  def set_decoder_rnn_weights(self, weights):
-    self.decoder.layers[1].set_weights(weights)
 
   def get_decoder_rnn_states(self):
-    return [i.eval() for i in self.z.states]
+    map = {}
+    for layer in self.decoder.layers:
+      if "hidden_z" in layer.name:
+        map[layer.name] = [i.eval() for i in layer.states]
+    return map
 
   def set_decoder_rnn_states(self, states):
-    for i in range(len(states)):
-      self.z.states[i].assign(states[i]).eval()
+    for layer in self.decoder.layers:
+      if "hidden_z" in layer.name:
+        input = states[layer.name]
+        for i in range(len(input)):
+          layer.states[i].assign(input[i]).eval()
+        
+
 
   def reset_states(self):
     # self.encoder.layers[2].reset_states()
-    self.decoder.layers[1].reset_states()
+    self.decoder.reset_states()
 
   def mass_decode(self, indices, states):
     probabilties = []

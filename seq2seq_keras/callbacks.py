@@ -7,10 +7,12 @@ from data_feeder import DataFeeder
 class MyTensorBoard(TensorBoard):
 
 
-    def __init__(self, log_dir='./logs', histogram_freq=0, write_graph=True, write_images=False, flags=None):
+    def __init__(self, smt, log_dir='./logs', histogram_freq=0, write_graph=True, write_images=False, flags=None):
         if not flags:
             raise Exception("flags cannot be None!")
         super(MyTensorBoard, self).__init__(log_dir, histogram_freq, write_graph, write_images)
+        
+        self.smt = smt
         self.FLAGS = flags
         self.test_feeder = DataFeeder(data_dir=self.FLAGS.data_dir,
                                  prefix="newstest2013",
@@ -29,7 +31,7 @@ class MyTensorBoard(TensorBoard):
         hidden_dim = self.FLAGS.hidden_dim
         beam_size = self.FLAGS.beam_size
 
-        tester = SMT(en_length, hidden_dim, vocab_size, vocab_size, embedding_size)
+        tester = self.smt
         tester.load_weights(saved_weights)
 
         for i in range(20):
