@@ -133,15 +133,14 @@ class DataFeeder:
         return (en, fr)
 
 
-    def read_data(self, ids_path, max_num_samples):
+    def read_data(self, ids_path, max_num_samples=0, offset=0):
         # read from self.data_path
         # self.data = ...
         output = []
         file = gfile.GFile(ids_path)
         counter = 0
         for line in file:
-            line = line.strip('\n').split(' ')
-            line = [int(x) for x in line]
+            line = self.__tokenize(line)
             output.append(line)
             counter += 1
             if counter % 10000 == 0:
