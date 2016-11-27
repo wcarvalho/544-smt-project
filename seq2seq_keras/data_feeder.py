@@ -28,7 +28,7 @@ _DIGIT_RE = re.compile(br"\d")
 
 class DataFeeder:
 
-    def __init__(self, data_dir, prefix, vocab_size=10000, max_num_samples=1000000):
+    def __init__(self, data_dir, prefix, vocab_size=10000, max_num_samples=1000000, offset=0):
         ''' During initialization all file paths are created based on the root and prefix '''
         self.en_vocab, self.fr_vocab = {}, {}
         self.en_vocab_inv, self.fr_vocab_inv = {}, {}
@@ -58,9 +58,9 @@ class DataFeeder:
 
         print("start reading data... ")
         if not self.en_data:
-            self.en_data = self.read_data(self.en_ids_path, max_num_samples)
+            self.en_data = self.read_data(self.en_ids_path, max_num_samples, offset)
         if not self.fr_data:
-            self.fr_data = self.read_data(self.fr_ids_path, max_num_samples)
+            self.fr_data = self.read_data(self.fr_ids_path, max_num_samples, offset)
 
 
     def invert_vocab(self, vocab):
@@ -134,21 +134,23 @@ class DataFeeder:
         return (en, fr)
 
 
-    def read_data(self, ids_path, max_num_samples):
+    def read_data(self, ids_path, max_num_samples, offset=0):
         # read from self.data_path
         # self.data = ...
         output = []
         file = gfile.GFile(ids_path)
         counter = 0
         for line in file:
-            line = line.strip('\n').split(' ')
-            line = [int(x) for x in line]
-            output.append(line)
-            counter += 1
             if counter % 10000 == 0:
                 print ("%d lines read" % counter)
+            if counter >= offset:
+                line = line.strip('\n').split(' ')
+                line = [int(x) for x in line]
+                output.append(line)
+            counter += 1
             if max_num_samples > 0 and counter >= max_num_samples:
                 break
+        print(len(output))
         return output
 
 
