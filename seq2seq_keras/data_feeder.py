@@ -83,7 +83,13 @@ class DataFeeder:
             raise ValueError('language can only be "en" or "fr"')
         words = []
         if language == "en":
-            words = [self.en_vocab_inv[f] for f in feats]
+            try:
+                words = [self.en_vocab_inv[f] for f in feats]
+            except Exception as e:
+                print self.en_vocab_inv
+                print type(f)
+                print type(self.en_vocab_inv.keys()[0])
+                raise e
         elif language == "fr":
             words = [self.fr_vocab_inv[f] for f in feats]
         if skip_special_tokens:
@@ -104,8 +110,9 @@ class DataFeeder:
             en, fr = np.asarray(en), np.asarray(fr)
             fr_target = np.asarray(fr_target)
             weights = np.zeros_like(fr_target)
-            for i, v in enumerate(fr_target):
-                if v != PAD_ID: weights[i] = 1
+            weights[fr_target != PAD_ID] = 1
+            # for i, v in enumerate(fr_target):
+                # if v != PAD_ID: weights[i] = 1
             fr_target = np.expand_dims(fr_target, -1)
             yield ([en, fr], fr_target, weights)
 
@@ -135,14 +142,17 @@ class DataFeeder:
         return (en, fr)
 
 
-    def read_data(self, ids_path, max_num_samples=0, offset=0):
+    # def read_data(self, ids_path, max_num_samples=0, offset=0):
+    def read_data(self, ids_path, max_num_samples=0):
         # read from self.data_path
         # self.data = ...
         output = []
         file = gfile.GFile(ids_path)
         counter = 0
         for line in file:
-            line = self.__tokenize(line)
+            # line = self.__tokenize(line)
+            line = line.strip('\n').split(' ')
+            line = [int(x) for x in line]
             output.append(line)
             counter += 1
             if counter % 10000 == 0:
