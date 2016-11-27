@@ -100,10 +100,11 @@ class DataFeeder:
     def produce(self, batch_size=64):
         while 1:
             en, fr = self.get_batch(batch_size)
-            fr_target = [seq[1:]+[0] for seq in fr]
+            fr_target = [seq[1:]+[PAD_ID] for seq in fr]
             en, fr = np.asarray(en), np.asarray(fr)
             fr_target = np.asarray(fr_target)
-            weights = (fr_target != 0).astype(int)
+            weights = np.zeros_like(fr_target)
+            weights[fr_target != PAD_ID] = 1
             fr_target = np.expand_dims(fr_target, -1)
             yield ([en, fr], fr_target, weights)
 
