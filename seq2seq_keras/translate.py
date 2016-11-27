@@ -222,7 +222,7 @@ if __name__ == "__main__":
     parser.add_argument("--learning_rate", type=float, default=0.5, help="Learning rate.")
     parser.add_argument("--learning_rate_decay_factor", type=float, default=0.99, help="Learning rate decays by this much.")
     parser.add_argument("--max_gradient_norm", type=float, default=5.0, help="Clip gradients to this norm.")
-    parser.add_argument("--batch_size", type=int, default=64, help="Batch size to use during training.")
+    parser.add_argument("--batch_size", type=int, default=1024, help="Batch size to use during training.")
     
     parser.add_argument("--beam_size", type=int, default=50, help="Batch size to use during training.")
     parser.add_argument("--max_beam_search", type=int, default=100, help="Max iterations in beam search.")
@@ -232,7 +232,7 @@ if __name__ == "__main__":
     parser.add_argument("--hidden_dim", type=int, default=256, help="Batch size to use during training.")
     
 
-    parser.add_argument("--embedding_size", type=int, default=100, help="Size of word embedding")
+    parser.add_argument("--embedding_size", type=int, default=1024, help="Size of word embedding")
     parser.add_argument("--vocab_size", type=int, default=10000, help="Vocabulary size.")
     parser.add_argument("--data_dir", default="wmt", help="Data directory")
     parser.add_argument("--train_dir", default="wmt", help="Training directory.")

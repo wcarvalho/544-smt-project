@@ -30,7 +30,7 @@ class SMT(object):
 
   def _build_encoder(self, input_length, hidden_dim, vocab_size, embedding_size=64):
     en = Input(shape=(input_length,), name='en_input_w')
-    s = Embedding(vocab_size, embedding_size, input_length=input_length, name='en_embed_s')(en)
+    s = Embedding(vocab_size, embedding_size, input_length=input_length, mask_zero=True, name='en_embed_s')(en)
     h = LSTM(hidden_dim, return_sequences=False, name='hidden_h')(s)
     self.encoder = Model([en], [h])
     return self.encoder
@@ -52,6 +52,7 @@ class SMT(object):
   def set_recurrent_h(self, x): self.recurrent_h = x
 
   def encode(self, input_sentence):
+    self.reset_states()
     self.recurrent_h = self.encoder.predict(input_sentence)
     return self.recurrent_h
 
@@ -88,6 +89,7 @@ class SMT(object):
       self.z.states[i].assign(states[i]).eval()
 
   def reset_states(self):
+    # self.encoder.layers[2].reset_states()
     self.decoder.layers[1].reset_states()
 
   def mass_decode(self, indices, states):
@@ -106,7 +108,6 @@ class SMT(object):
     return en2fr_beam_search(self, feeder, en_sentence, beam_size, self.fr_vocab_size, max_search, verbosity)
 
   def greedy_search(self, en_sentence, length, verbosity=0):
-    self.reset_states()
     self.encode(en_sentence)
     probabilties, weights = self.decode()
     best_indices, best_probabilities = get_best(probabilties, 1)
