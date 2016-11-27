@@ -32,7 +32,7 @@ class MyTensorBoard(TensorBoard):
         tester = SMT(en_length, hidden_dim, vocab_size, vocab_size, embedding_size)
         tester.load_weights(saved_weights)
 
-        for i in range(20):
+        for i in range(10):
             en_sentence, cr_fr_sentence = self.test_feeder.get_batch(1, en_length=en_length)
             en_sentence[0].reverse()
             en_sentence = np.array(en_sentence)
@@ -55,6 +55,7 @@ class MyTensorBoard(TensorBoard):
         except OSError:
             pass
 
+
     def on_batch_end(self, batch, logs={}):
         if (batch + 1) % 100 == 0:
             import tensorflow as tf
@@ -74,6 +75,16 @@ class MyTensorBoard(TensorBoard):
 
         if (batch + 1) % self.FLAGS.validation_frequency == 0:
             self.test()
+            val_loss = self.model.evaluate_generator(generator=self.test_feeder.produce(self.FLAGS.batch_size),
+                                          val_samples=self.test_feeder.get_size())
+            print("|||Validataion Loss: %.3f" % val_loss)
+            import tensorflow as tf
+            summary = tf.Summary()
+            summary_value = summary.value.add()
+            summary_value.simple_value = val_loss
+            summary_value.tag = "val_loss"
+            self.writer.add_summary(summary, batch)
+            self.writer.flush()
 
 
 def fr_length(fr_indices):
