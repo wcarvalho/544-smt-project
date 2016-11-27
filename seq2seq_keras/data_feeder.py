@@ -104,7 +104,8 @@ class DataFeeder:
             en, fr = np.asarray(en), np.asarray(fr)
             fr_target = np.asarray(fr_target)
             weights = np.zeros_like(fr_target)
-            weights[fr_target != PAD_ID] = 1
+            for i, v in enumerate(fr_target):
+                if v != PAD_ID: weights[i] = 1
             fr_target = np.expand_dims(fr_target, -1)
             yield ([en, fr], fr_target, weights)
 
