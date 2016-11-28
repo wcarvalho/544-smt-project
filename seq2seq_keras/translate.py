@@ -64,11 +64,11 @@ def create_model(vocab_size, en_length, fr_length, hidden_dim):
 
 def train_auto(FLAGS):
     # Prepare WMT data
-    FLAGS.max_train_data_size = FLAGS.max_train_data_size / FLAGS.batch_size * FLAGS.batch_size
     train_feeder = DataFeeder(data_dir=FLAGS.data_dir,
                               prefix="giga-fren.release2",
                               vocab_size=FLAGS.vocab_size,
-                              max_num_samples=FLAGS.max_train_data_size)
+                              max_num_samples=FLAGS.max_train_data_size,
+                              offset=FLAGS.offset)
 
     # test_feeder = DataFeeder(data_dir=FLAGS.data_dir,
     #                          prefix="newstest2013",
@@ -169,6 +169,7 @@ if __name__ == "__main__":
     parser.add_argument("--data_dir", default="wmt", help="Data directory")
     parser.add_argument("--train_dir", default="wmt", help="Training directory.")
     parser.add_argument("--max_train_data_size", type=int, default=0, help="Limit on the size of training data (0: no limit).")
+    parser.add_argument("--offset", type=int, default=0, help="skip part of dataset")
     parser.add_argument("--steps_per_checkpoint", type=int, default=200, help="How many training steps to do per checkpoint.")
     parser.add_argument("--decode", action='store_true', default=False, help="Set for interactive decoding.")
     parser.add_argument("--plot_name", type=str, help="base name for plots")

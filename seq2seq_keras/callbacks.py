@@ -11,7 +11,7 @@ class MyTensorBoard(TensorBoard):
         if not flags:
             raise Exception("flags cannot be None!")
         super(MyTensorBoard, self).__init__(log_dir, histogram_freq, write_graph, write_images)
-        
+
         self.smt = smt
         self.FLAGS = flags
         self.test_feeder = DataFeeder(data_dir=self.FLAGS.data_dir,
@@ -24,18 +24,11 @@ class MyTensorBoard(TensorBoard):
         saved_weights = "temp.ckpt"
         self.model.save(saved_weights, overwrite=True)
 
-        vocab_size = self.FLAGS.vocab_size
-        embedding_size = self.FLAGS.embedding_size
-
-        en_length = self.FLAGS.en_length
-        hidden_dim = self.FLAGS.hidden_dim
-        beam_size = self.FLAGS.beam_size
-
         tester = self.smt
         tester.load_weights(saved_weights)
 
-        for i in range(20):
-            en_sentences, cr_fr_sentences = self.test_feeder.get_batch(self.FLAGS.batch_size, en_length=en_length)
+        for i in range(1):
+            en_sentences, cr_fr_sentences = self.test_feeder.get_batch(self.FLAGS.batch_size, en_length=self.FLAGS.en_length)
             for i in en_sentences: i.reverse()
             en_sentences = np.array(en_sentences)
             cr_fr_sentences = np.array(cr_fr_sentences)
@@ -48,10 +41,12 @@ class MyTensorBoard(TensorBoard):
                 en_sen = f2w(self.test_feeder, en_sentence)
                 fr_sen = f2w(self.test_feeder, fr_sentence, lan="fr")
                 cr_fr_sen = f2w(self.test_feeder, cr_fr_sentence, lan="fr")
-                
-                print("\nen: "+" ".join(en_sen))
-                print("--\nfr len=%d: " % len(fr_sen) + " ".join(fr_sen))
-                print("--\ncr fr len=%d: " % len(cr_fr_sen) + " ".join(cr_fr_sen))
+
+                print("en: "+" ".join(en_sen))
+                print("cr fr len=%d: " % len(cr_fr_sen) + " ".join(cr_fr_sen))
+                print("|| fr len=%d: " % len(fr_sen) + " ".join(fr_sen))
+                print("-------------------------------------------------------")
+
             # fr_l = fr_length(cr_fr_sentence[0])
 
 
@@ -85,6 +80,17 @@ class MyTensorBoard(TensorBoard):
 
         if (batch + 1) % self.FLAGS.validation_frequency == 0:
             self.test()
+            val_loss = self.model.evaluate_generator(generator=self.test_feeder.produce(self.FLAGS.batch_size),
+                                          val_samples=self.test_feeder.get_size())
+            print("||| Validataion Loss: %.3f" % val_loss)
+            print("-------------------------------------------------------")
+            import tensorflow as tf
+            summary = tf.Summary()
+            summary_value = summary.value.add()
+            summary_value.simple_value = val_loss
+            summary_value.tag = "val_loss"
+            self.writer.add_summary(summary, batch)
+            self.writer.flush()
 
 def f2w(feeder, sen, lan="en"): return feeder.feats2words(sen, language=lan, skip_special_tokens=True)
 
