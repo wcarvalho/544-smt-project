@@ -286,7 +286,7 @@ if __name__ == "__main__":
     print("English data size %d" % len(df.en_data))
     print("French data size %d" % len(df.fr_data))
 
-    ([en, fr], _) = next(df.produce())
+    ([en, fr], _, _) = next(df.produce())
     print("Requested batch size: %d" % 10)
     print("English batch size %d" % len(en))
     print("French batch size %d" % len(fr))
