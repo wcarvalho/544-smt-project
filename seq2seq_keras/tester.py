@@ -149,18 +149,16 @@ class SMT(object):
   def greedy_search(self, en_sentence, length, verbosity=0):
     self.encode(en_sentence)
     probabilties, weights = self.decode()
-    best_indices = np.zeros((len(probabilties), length))
-    best_indices[:,0] = np.argsort(probabilties, axis=1, kind = 'heapsort')[:, -1]
-
+    best_indices = np.zeros((len(probabilties), length), dtype=np.int)
+    update_best(best_indices, probabilties, 0)
+    
     for j in range(1, length):
       probabilties, weights = self.decode(best_indices[:,j-1])
-      best_indices[:,j] = np.argsort(probabilties, axis=1, kind = 'heapsort')[:, -1]
-
+      update_best(best_indices, probabilties, j)
     return best_indices
 
-def get_best(array, N):
-  indices = np.argsort(array, kind = 'heapsort')[-N:]
-  values = np.sort(array, kind = 'heapsort')[-N:]
-  return indices, values
+def update_best(best, probabilties, j):
+  sorted_i = np.argsort(probabilties, axis=1, kind = 'heapsort')
+  best[:,j] = sorted_i[:, -1]
 
 def not_implemented(name): return "'"+name+"' has not yet been implemented!"
