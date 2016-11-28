@@ -42,95 +42,24 @@ K.set_session(sess)
 # FIXME: this is sloppy, whoever did this
 from data_feeder import *
 
-from tester import SMT
+from tester import SMT, stacked_lstm
 from callbacks import MyTensorBoard
-
 
 def create_model(vocab_size, en_length, fr_length, hidden_dim):
     en = Input(shape=(en_length,), name='en_input_w')
     s = Embedding(vocab_size, FLAGS.embedding_size, input_length=en_length, mask_zero=True, name='en_embed_s')(en)
-    h =LSTM(hidden_dim, return_sequences=False, name='hidden_h')(s)
+    h = stacked_lstm(s, hidden_dim, False, False, "hidden_h", FLAGS.num_layers)
     c = RepeatVector(fr_length, name='repeated_hidden_c')(h)
     fr = Input(shape=(fr_length,), name='fr_input_y')
     # fr_one_hot = Lambda(lambda x : K.one_hot(K.cast(x,'int32'), FLAGS.vocab_size), name="fr_input_y_one_hot")(fr)
     fr_encode = Embedding(vocab_size, FLAGS.embedding_size, input_length=fr_length, mask_zero=False, name='fr_embed_s')(fr)
     decode_input = merge([fr_encode, c], mode='concat', name='y_cat_c')
-    z = LSTM(hidden_dim, return_sequences=True, name='hidden_z')(decode_input)
+    z = stacked_lstm(decode_input, hidden_dim, True, False, "hidden_z", FLAGS.num_layers)
     p = TimeDistributed(Dense(vocab_size, activation='softmax'), name='prob')(z)
     model = Model(input=[en, fr], output=p)
     if FLAGS.plot_name:
         plot(model, to_file=FLAGS.plot_name+'.png', show_shapes=True)
     return model
-
-
-def create_model_test(vocab_size, hidden_dim):
-    en = Input(shape=(1,), name='en_input_w')
-    s = Embedding(vocab_size, FLAGS.embedding_size, input_length=1, mask_zero=True, name='en_embed_s')(en)
-    h =LSTM(hidden_dim, return_sequences=False, name='hidden_h')(s)
-    c = RepeatVector(1, name='repeated_hidden_c')(h)
-    prev = Input(shape=(1, vocab_size,), name='fr_input_y')
-    decode_input = merge([c, prev], mode='concat',  name='y_cat_c')
-    z = LSTM(hidden_dim, return_sequences=True, name='hidden_z')(decode_input)
-    p = TimeDistributed(Dense(vocab_size, activation='softmax'), name='prob')(z)
-    model = Model(input=[en, prev], output=p)
-    if FLAGS.plot_name:
-        plot(model, to_file=FLAGS.plot_name+'_test.png', show_shapes=True)
-    return model
-
-
-def one_hot(x, vocab_size):
-    ns, nt = x.shape
-    output = K.zeros((ns, nt, vocab_size))
-
-
-def dense_to_one_hot(labels_dense, num_classes=10):
-    num_labels = K.shape(labels_dense)[0]
-    labels_one_hot = np.zeros((num_labels, num_classes))
-    labels_one_hot.flat[labels_dense.ravel()] = 1
-    return labels_one_hot
-
-
-def train():
-    # Prepare WMT data
-    train_feeder = DataFeeder(data_dir=FLAGS.data_dir,
-                                          prefix="giga-fren.release2",
-                                          vocab_size=FLAGS.vocab_size,
-                                          max_num_samples=FLAGS.max_train_data_size)
-
-    test_feeder = DataFeeder(data_dir=FLAGS.data_dir,
-                                         prefix="newstest2013",
-                                         vocab_size=FLAGS.vocab_size)
-
-    # TODO: should call test_feeder.get_batch() once to get the entire test set, which is reasonably small.
-
-    en_length, fr_length, hidden_dim = FLAGS.en_length, FLAGS.fr_length, FLAGS.hidden_dim
-    model_train = create_model(FLAGS.vocab_size, en_length, fr_length, hidden_dim)
-    model_test = create_model_test(FLAGS.vocab_size, hidden_dim)
-    model_train.compile(optimizer='rmsprop', loss='categorical_crossentropy')
-    model_test.compile(optimizer='rmsprop', loss='categorical_crossentropy')
-    print(model_train.summary())
-
-    niterations = 10000
-    frequency = 100
-    for i in range(niterations):
-        source, target = train_feeder.get_batch(FLAGS.batch_size, en_length=en_length, fr_length=fr_length)
-        source, target = np.asarray(source), np.asarray(target)
-        target = one_hot(target, FLAGS.vocab_size) # embedding handles one hot coding, so source doesn't need it.
-        loss = model_train.train_on_batch([source, target], target)
-        print("Iteration: %d | Loss = %.3f" % (i+1, loss))
-
-        if (i+1) % frequency == 0:
-            # TODO: should also run a validation/test
-            # 1. somehow copy weights from train model to test model
-            # 2. model_test.test_on_batch(...)
-            ## do_validation
-            ## do_testing
-            # optional: print("saving a model...")
-            model_train.save(os.path.join(FLAGS.train_dir, "itr_%d.chkpoint" % (i+1)), overwrite=True)
-    ## use best weights for testing
-
-# def custom_loss(y_true, y_pred):
-#     return K.sparse_categorical_crossentropy(y_pred, y_true, from_logits=True)
 
 
 def train_auto(FLAGS):
@@ -155,11 +84,13 @@ def train_auto(FLAGS):
                         sample_weight_mode="temporal")
     print(model_train.summary())
 
+    tester = SMT(en_length, hidden_dim, FLAGS.vocab_size, FLAGS.vocab_size, FLAGS.embedding_size, FLAGS.num_layers, FLAGS.batch_size)
+
     if FLAGS.weights:
         model_train.load_weights(FLAGS.weights)
 
     # tensorboard callback
-    tb_callback = MyTensorBoard(log_dir='../logs', histogram_freq=0, write_graph=False, write_images=False, flags=FLAGS)
+    tb_callback = MyTensorBoard(smt=tester, log_dir='../logs', histogram_freq=0, write_graph=False, write_images=False, flags=FLAGS)
     # check point callback
     # cp_callback = ModelCheckpoint(filepath="../logs/weights.{epoch:02d}-{val_loss:.2f}.hdf5",
     #                               monitor='val_loss',
@@ -230,6 +161,7 @@ if __name__ == "__main__":
     parser.add_argument("--en_length", type=int, default=40, help="Padded EN length to use during training.")
     parser.add_argument("--fr_length", type=int, default=50, help="Padded FR length to use during training.")
     parser.add_argument("--hidden_dim", type=int, default=256, help="Batch size to use during training.")
+    parser.add_argument("--num_layers", type=int, default=3, help="Batch size to use during training.")
     
 
     parser.add_argument("--embedding_size", type=int, default=1024, help="Size of word embedding")
