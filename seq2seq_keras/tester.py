@@ -20,7 +20,7 @@ def stacked_lstm(input, hidden_dim, return_sequences, stateful, name, N):
 
 class SMT(object):
   """docstring for SMT_Tester"""
-  def __init__(self, en_input_length, hidden_dim, en_vocab_size, fr_vocab_size, embedding_size=64, num_layers=1):
+  def __init__(self, en_input_length, hidden_dim, en_vocab_size, fr_vocab_size, embedding_size=64, num_layers=1, batch_size=5):
 
 
     self.en_input_length = en_input_length
@@ -29,10 +29,11 @@ class SMT(object):
     self.fr_vocab_size = fr_vocab_size
     self.embedding_size = embedding_size
     self.num_layers = num_layers
+    self.batch_size = batch_size
 
 
     self._build_encoder(en_input_length, hidden_dim, en_vocab_size, embedding_size, num_layers)
-    self._build_decoder(hidden_dim, fr_vocab_size, embedding_size, num_layers)
+    self._build_decoder(hidden_dim, fr_vocab_size, embedding_size, num_layers, batch_size)
     self._build_fr_word_embedder(fr_vocab_size, embedding_size)
 
     # self.map = {layer.name: layer for layer in self.decoder.layers}
@@ -51,8 +52,9 @@ class SMT(object):
     self.encoder = Model([en], [h])
     return self.encoder
 
-  def _build_decoder(self, hidden_dim, vocab_size, embedding_size=64, num_layers=1):
-    decoder_input = Input(batch_shape=(1, 1, embedding_size+hidden_dim), name='decoder_input')
+  def _build_decoder(self, hidden_dim, vocab_size, embedding_size=64, num_layers=1, batch_size=5):
+    print "decoder batch_size", batch_size
+    decoder_input = Input(batch_shape=(batch_size, 1, embedding_size+hidden_dim), name='decoder_input')
     self.z = stacked_lstm(decoder_input, hidden_dim, False, True, "hidden_z", num_layers)
     # LSTM(hidden_dim, name='hidden_z', stateful=True)
     # z_out = self.z(decoder_input)
@@ -81,17 +83,33 @@ class SMT(object):
     return np.array([np.concatenate([self.recurrent_h,padding],axis=-1)]).astype(np.float32)
 
   def _make_regular_batch(self, word_indx):
-    indx_array = np.array([word_indx])
-    embedded = self.fr_embedder.predict(indx_array)[0]
-    return np.array([np.concatenate([self.recurrent_h,embedded],axis=-1)])
+    # indx_array = np.ones((self.batch_size))
+    if word_indx.shape[0] == 1:
+      indx_array = np.repeat(word_indx, self.recurrent_h.shape[0], axis=-1)
+    elif word_indx.shape[0] != self.recurrent_h.shape[0]:
+      raise Exception("word_indx.shape[0] != self.recurrent_h.shape[0] " + str(word_indx.shape[0]) + "!=" + str(self.recurrent_h.shape[0]))
+    else:
+      indx_array = word_indx
+
+    embedded = self.fr_embedder.predict(indx_array)
+    recurrent_h = np.expand_dims(self.recurrent_h, 1)
+
+    batch = np.concatenate([recurrent_h,embedded],axis=-1)
+    # print ("embedded.shape", embedded.shape)
+    # print ("recurrent_h.shape", recurrent_h.shape)
+    return batch.astype(np.float32)
 
   def decode(self, word_indx = None):
     # if word_indx is None: batch = self._make_initial_batch()
-    if word_indx is None: batch = self._make_regular_batch(1)
+    if word_indx is None: batch = self._make_regular_batch(np.array([1]))
     else: batch = self._make_regular_batch(word_indx)
+    # print ("batch.shape", batch.shape)
+    batch = np.reshape(batch, (self.batch_size, 1, self.embedding_size+self.hidden_dim))
     probabilties = self.decoder.predict(batch)
-    return copy.deepcopy(probabilties), copy.deepcopy(self.get_decoder_rnn_states())
+    return probabilties, self.get_decoder_rnn_states()
 
+  def copy_decode(self, word_indx = None):
+    return copy.deepcopy(self.decode(word_indx))
 
   def get_decoder_rnn_states(self):
     map = {}
@@ -131,17 +149,25 @@ class SMT(object):
   def greedy_search(self, en_sentence, length, verbosity=0):
     self.encode(en_sentence)
     probabilties, weights = self.decode()
-    best_indices, best_probabilities = get_best(probabilties, 1)
-    del probabilties
-    word_indices = list(best_indices)
-    for i in range(1, length):
-      probabilties, weights = self.decode(best_indices)
-      del weights
-      best_indices, best_probabilities = get_best(probabilties, 1)
-      del probabilties
-      word_indices.append(best_indices[0])
+    best_indices = np.zeros((len(probabilties), length))
 
-    return [word_indices]
 
+    for i in range(best_indices.shape[0]):
+      probability = probabilties[i]
+      best_indices[i,0], _ = get_best(probability, 1)
+
+    for j in range(1, length):
+      probabilties, weights = self.decode(best_indices[:,j])
+
+      for i in range(best_indices.shape[0]):
+        probability = probabilties[i]
+        best_indices[i,j], weights = get_best(probability, 1)
+
+    return best_indices
+
+def get_best(array, N):
+  indices = np.argsort(array, kind = 'heapsort')[-N:]
+  values = np.sort(array, kind = 'heapsort')[-N:]
+  return indices, values
 
 def not_implemented(name): return "'"+name+"' has not yet been implemented!"

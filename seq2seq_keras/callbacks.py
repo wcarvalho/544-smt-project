@@ -35,22 +35,31 @@ class MyTensorBoard(TensorBoard):
         tester.load_weights(saved_weights)
 
         for i in range(20):
-            en_sentence, cr_fr_sentence = self.test_feeder.get_batch(1, en_length=en_length)
-            en_sentence[0].reverse()
-            en_sentence = np.array(en_sentence)
-            cr_fr_sentence = np.array(cr_fr_sentence)
-            en_str = self.test_feeder.feats2words(en_sentence[0], language='en', skip_special_tokens=True)
-            fr_l = fr_length(cr_fr_sentence[0])
-            print("\nen: "+" ".join(en_str))
+            en_sentences, cr_fr_sentences = self.test_feeder.get_batch(self.FLAGS.batch_size, en_length=en_length)
+            for i in en_sentences: i.reverse()
+            en_sentences = np.array(en_sentences)
+            cr_fr_sentences = np.array(cr_fr_sentences)
+            fr_sentences = tester.greedy_search(en_sentences, self.FLAGS.fr_length, self.FLAGS.verbosity)
+            for si in range(self.FLAGS.batch_size):
+                en_sentence = en_sentences[si]
+                fr_sentence = fr_sentences[si]
+                cr_fr_sentence = cr_fr_sentences[si]
 
-            print("fr_re len=%d: " % fr_l + " ".join(self.test_feeder.feats2words(cr_fr_sentence[0], language='fr', skip_special_tokens=True)))
+                en_sen = f2w(self.test_feeder, en_sentence)
+                fr_sen = f2w(self.test_feeder, fr_sentence, lan="fr")
+                cr_fr_sen = f2w(self.test_feeder, cr_fr_sentence, lan="fr")
+                
+                print("\nen: "+" ".join(en_sen))
+                print("fr len=%d: " % len(fr_sen) + " ".join(fr_sen))
+                print("cr fr len=%d: " % len(cr_fr_sen) + " ".join(cr_fr_sen))
+            # fr_l = fr_length(cr_fr_sentence[0])
+
 
             # fr_sentence = tester.beam_search(en_sentence, self.test_feeder, beam_size=beam_size, max_search=fr_l, verbosity=self.FLAGS.verbosity)
 
-            fr_sentence = tester.greedy_search(en_sentence, self.FLAGS.fr_length, self.FLAGS.verbosity)
-            for fr in fr_sentence:
-                fr_str = self.test_feeder.feats2words(fr, language='fr', skip_special_tokens=True)
-                print("fr len=%d: " % fr_length(fr_str) + " ".join(fr_str))
+            # for fr in fr_sentence:
+            #     fr_str = self.test_feeder.feats2words(fr, language='fr', skip_special_tokens=True)
+            #     print("fr len=%d: " % fr_length(fr_str) + " ".join(fr_str))
 
         try:
             os.remove(saved_weights)
@@ -77,6 +86,7 @@ class MyTensorBoard(TensorBoard):
         if (batch + 1) % self.FLAGS.validation_frequency == 0:
             self.test()
 
+def f2w(feeder, sen, lan="en"): return feeder.feats2words(sen, language=lan, skip_special_tokens=True)
 
 def fr_length(fr_indices):
     i = 0

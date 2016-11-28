@@ -84,7 +84,7 @@ def train_auto(FLAGS):
                         sample_weight_mode="temporal")
     print(model_train.summary())
 
-    tester = SMT(en_length, hidden_dim, FLAGS.vocab_size, FLAGS.vocab_size, FLAGS.embedding_size, FLAGS.num_layers)
+    tester = SMT(en_length, hidden_dim, FLAGS.vocab_size, FLAGS.vocab_size, FLAGS.embedding_size, FLAGS.num_layers, FLAGS.batch_size)
 
     if FLAGS.weights:
         model_train.load_weights(FLAGS.weights)
