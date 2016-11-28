@@ -6,6 +6,7 @@
 import re
 import argparse
 import os.path
+from nltk import tokenize
 from tensorflow.python.platform import gfile
 import numpy as np
 
@@ -43,7 +44,8 @@ class DataFeeder:
         self.fr_ids_path = os.path.join(data_dir, prefix) + ".ids%d" % vocab_size + ".fr"
         self.en_ids_path = os.path.join(data_dir, prefix) + ".ids%d" % vocab_size + ".en"
         print("start preparing data...")
-        self.prepare_data()
+        self.prepare_data(en_tokenizer=tokenize.WhitespaceTokenizer().tokenize,
+                          fr_tokenizer=tokenize.WhitespaceTokenizer().tokenize)
         # as a side effect of preparing data, self.data and self.vocabulary should've been
         # initialized. If they are empty, it means that all the temporary files exist already
         # and nothing has been done, so we need to read from the files manually.
@@ -248,18 +250,20 @@ class DataFeeder:
                         tokens_file.write(" ".join([str(tok) for tok in token_ids]) + "\n")
 
 
-    def prepare_data(self, tokenizer=None):
+    def prepare_data(self, en_tokenizer=None, fr_tokenizer=None):
         print("Create vocabularies of the appropriate sizes")
         if not gfile.Exists(self.fr_vocab_path):
-            self.fr_vocab = self.create_vocabulary(self.fr_vocab_path, self.fr_raw_path, tokenizer)
+            print("Create vocabularies for French")
+            self.fr_vocab = self.create_vocabulary(self.fr_vocab_path, self.fr_raw_path, fr_tokenizer)
         if not gfile.Exists(self.en_vocab_path):
-            self.en_vocab = self.create_vocabulary(self.en_vocab_path, self.en_raw_path, tokenizer)
+            print("Create vocabularies for English")
+            self.en_vocab = self.create_vocabulary(self.en_vocab_path, self.en_raw_path, en_tokenizer)
 
         print("Translate raw data to numbers using the vocabulary")
         if not gfile.Exists(self.fr_ids_path):
-            self.data_to_token_ids(self.fr_raw_path, self.fr_ids_path, self.fr_vocab_path, tokenizer)
+            self.data_to_token_ids(self.fr_raw_path, self.fr_ids_path, self.fr_vocab_path, fr_tokenizer)
         if not gfile.Exists(self.en_ids_path):
-            self.data_to_token_ids(self.en_raw_path, self.en_ids_path, self.en_vocab_path, tokenizer)
+            self.data_to_token_ids(self.en_raw_path, self.en_ids_path, self.en_vocab_path, en_tokenizer)
         print("finished")
 
 
