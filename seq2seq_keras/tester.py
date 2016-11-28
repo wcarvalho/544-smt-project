@@ -53,7 +53,7 @@ class SMT(object):
     return self.encoder
 
   def _build_decoder(self, hidden_dim, vocab_size, embedding_size=64, num_layers=1, batch_size=5):
-    print "decoder batch_size", batch_size
+
     decoder_input = Input(batch_shape=(batch_size, 1, embedding_size+hidden_dim), name='decoder_input')
     self.z = stacked_lstm(decoder_input, hidden_dim, False, True, "hidden_z", num_layers)
     # LSTM(hidden_dim, name='hidden_z', stateful=True)
@@ -150,18 +150,11 @@ class SMT(object):
     self.encode(en_sentence)
     probabilties, weights = self.decode()
     best_indices = np.zeros((len(probabilties), length))
-
-
-    for i in range(best_indices.shape[0]):
-      probability = probabilties[i]
-      best_indices[i,0], _ = get_best(probability, 1)
+    best_indices[:,0] = np.argsort(probabilties, axis=1, kind = 'heapsort')[:, -1]
 
     for j in range(1, length):
-      probabilties, weights = self.decode(best_indices[:,j])
-
-      for i in range(best_indices.shape[0]):
-        probability = probabilties[i]
-        best_indices[i,j], weights = get_best(probability, 1)
+      probabilties, weights = self.decode(best_indices[:,j-1])
+      best_indices[:,j] = np.argsort(probabilties, axis=1, kind = 'heapsort')[:, -1]
 
     return best_indices
 
