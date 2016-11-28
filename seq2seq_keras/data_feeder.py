@@ -7,7 +7,7 @@ import re
 import argparse
 import os.path
 # TODO remove this import
-from nltk import tokenize
+# from nltk import tokenize
 from tensorflow.python.platform import gfile
 import numpy as np
 
@@ -45,9 +45,11 @@ class DataFeeder:
         self.fr_ids_path = os.path.join(data_dir, prefix) + ".ids%d" % vocab_size + ".fr"
         self.en_ids_path = os.path.join(data_dir, prefix) + ".ids%d" % vocab_size + ".en"
         print("start preparing data...")
-        # TODO change it to self.prepare_data() to use default tokenizer
-        self.prepare_data(en_tokenizer=tokenize.WhitespaceTokenizer().tokenize,
-                          fr_tokenizer=tokenize.WhitespaceTokenizer().tokenize)
+        self.prepare_data()
+        # TODO we can change the tokenizers here
+        # self.prepare_data(en_tokenizer=tokenize.WhitespaceTokenizer().tokenize,
+        #                   fr_tokenizer=tokenize.WhitespaceTokenizer().tokenize)
+
         # as a side effect of preparing data, self.data and self.vocabulary should've been
         # initialized. If they are empty, it means that all the temporary files exist already
         # and nothing has been done, so we need to read from the files manually.
