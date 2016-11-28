@@ -6,6 +6,7 @@
 import re
 import argparse
 import os.path
+from nltk import tokenize
 from tensorflow.python.platform import gfile
 
 # Special vocabulary symbols - we always put them at the start.
@@ -136,6 +137,10 @@ class DataFeeder:
         for token in sentence.strip().split():
             words.extend(_WORD_SPLIT.split(token))
         return words
+    
+    def __tokenize_new(self, sentence):
+        words = tokenize.word_tokenize(sentence)
+        return words
 
 
     def create_vocabulary(self, vocabulary_path, data_path, tokenizer=None, normalize_digits=True):
@@ -153,7 +158,7 @@ class DataFeeder:
                 if tokenizer:
                     tokens = tokenizer(line)
                 else:
-                    tokens = self.__tokenize(line)
+                    tokens = self.__tokenize_new(line)
                 for w in tokens:
                     if normalize_digits:
                         word = _DIGIT_RE.sub(b"0", w)
