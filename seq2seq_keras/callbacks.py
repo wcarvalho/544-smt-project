@@ -50,8 +50,8 @@ class MyTensorBoard(TensorBoard):
                 cr_fr_sen = f2w(self.test_feeder, cr_fr_sentence, lan="fr")
                 
                 print("\nen: "+" ".join(en_sen))
-                print("fr len=%d: " % len(fr_sen) + " ".join(fr_sen))
-                print("cr fr len=%d: " % len(cr_fr_sen) + " ".join(cr_fr_sen))
+                print("--\nfr len=%d: " % len(fr_sen) + " ".join(fr_sen))
+                print("--\ncr fr len=%d: " % len(cr_fr_sen) + " ".join(cr_fr_sen))
             # fr_l = fr_length(cr_fr_sentence[0])
 
 
