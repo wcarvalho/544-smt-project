@@ -27,7 +27,7 @@ class MyTensorBoard(TensorBoard):
         tester = self.smt
         tester.load_weights(saved_weights)
 
-        for i in range(20):
+        for i in range(1):
             en_sentences, cr_fr_sentences = self.test_feeder.get_batch(self.FLAGS.batch_size, en_length=self.FLAGS.en_length)
             for i in en_sentences: i.reverse()
             en_sentences = np.array(en_sentences)
@@ -42,9 +42,11 @@ class MyTensorBoard(TensorBoard):
                 fr_sen = f2w(self.test_feeder, fr_sentence, lan="fr")
                 cr_fr_sen = f2w(self.test_feeder, cr_fr_sentence, lan="fr")
 
-                print("\nen: "+" ".join(en_sen))
-                print("--\nfr len=%d: " % len(fr_sen) + " ".join(fr_sen))
-                print("--\ncr fr len=%d: " % len(cr_fr_sen) + " ".join(cr_fr_sen))
+                print("en: "+" ".join(en_sen))
+                print("cr fr len=%d: " % len(cr_fr_sen) + " ".join(cr_fr_sen))
+                print("|| fr len=%d: " % len(fr_sen) + " ".join(fr_sen))
+                print("-------------------------------------------------------")
+
             # fr_l = fr_length(cr_fr_sentence[0])
 
 
@@ -80,7 +82,8 @@ class MyTensorBoard(TensorBoard):
             self.test()
             val_loss = self.model.evaluate_generator(generator=self.test_feeder.produce(self.FLAGS.batch_size),
                                           val_samples=self.test_feeder.get_size())
-            print("|||Validataion Loss: %.3f" % val_loss)
+            print("||| Validataion Loss: %.3f" % val_loss)
+            print("-------------------------------------------------------")
             import tensorflow as tf
             summary = tf.Summary()
             summary_value = summary.value.add()
