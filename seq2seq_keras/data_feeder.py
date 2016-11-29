@@ -6,6 +6,8 @@
 import re
 import argparse
 import os.path
+# TODO remove this import
+# from nltk import tokenize
 from tensorflow.python.platform import gfile
 import numpy as np
 
@@ -28,7 +30,7 @@ _DIGIT_RE = re.compile(br"\d")
 
 class DataFeeder:
 
-    def __init__(self, data_dir, prefix, vocab_size=10000, max_num_samples=1000000):
+    def __init__(self, data_dir, prefix, vocab_size=10000, max_num_samples=1000000, offset=0):
         ''' During initialization all file paths are created based on the root and prefix '''
         self.en_vocab, self.fr_vocab = {}, {}
         self.en_vocab_inv, self.fr_vocab_inv = {}, {}
@@ -44,6 +46,10 @@ class DataFeeder:
         self.en_ids_path = os.path.join(data_dir, prefix) + ".ids%d" % vocab_size + ".en"
         print("start preparing data...")
         self.prepare_data()
+        # TODO we can change the tokenizers here
+        # self.prepare_data(en_tokenizer=tokenize.WhitespaceTokenizer().tokenize,
+        #                   fr_tokenizer=tokenize.WhitespaceTokenizer().tokenize)
+
         # as a side effect of preparing data, self.data and self.vocabulary should've been
         # initialized. If they are empty, it means that all the temporary files exist already
         # and nothing has been done, so we need to read from the files manually.
@@ -58,9 +64,9 @@ class DataFeeder:
 
         print("start reading data... ")
         if not self.en_data:
-            self.en_data = self.read_data(self.en_ids_path, max_num_samples)
+            self.en_data = self.read_data(self.en_ids_path, max_num_samples, offset)
         if not self.fr_data:
-            self.fr_data = self.read_data(self.fr_ids_path, max_num_samples)
+            self.fr_data = self.read_data(self.fr_ids_path, max_num_samples, offset)
 
 
     def invert_vocab(self, vocab):
@@ -142,23 +148,23 @@ class DataFeeder:
         return (en, fr)
 
 
-    # def read_data(self, ids_path, max_num_samples=0, offset=0):
-    def read_data(self, ids_path, max_num_samples=0):
+    def read_data(self, ids_path, max_num_samples, offset=0):
         # read from self.data_path
         # self.data = ...
         output = []
         file = gfile.GFile(ids_path)
         counter = 0
         for line in file:
-            # line = self.__tokenize(line)
-            line = line.strip('\n').split(' ')
-            line = [int(x) for x in line]
-            output.append(line)
-            counter += 1
             if counter % 10000 == 0:
                 print ("%d lines read" % counter)
+            if counter >= offset:
+                line = line.strip('\n').split(' ')
+                line = [int(x) for x in line]
+                output.append(line)
+            counter += 1
             if max_num_samples > 0 and counter >= max_num_samples:
                 break
+        print(len(output))
         return output
 
 
@@ -248,18 +254,20 @@ class DataFeeder:
                         tokens_file.write(" ".join([str(tok) for tok in token_ids]) + "\n")
 
 
-    def prepare_data(self, tokenizer=None):
+    def prepare_data(self, en_tokenizer=None, fr_tokenizer=None):
         print("Create vocabularies of the appropriate sizes")
         if not gfile.Exists(self.fr_vocab_path):
-            self.fr_vocab = self.create_vocabulary(self.fr_vocab_path, self.fr_raw_path, tokenizer)
+            print("Create vocabularies for French")
+            self.fr_vocab = self.create_vocabulary(self.fr_vocab_path, self.fr_raw_path, fr_tokenizer)
         if not gfile.Exists(self.en_vocab_path):
-            self.en_vocab = self.create_vocabulary(self.en_vocab_path, self.en_raw_path, tokenizer)
+            print("Create vocabularies for English")
+            self.en_vocab = self.create_vocabulary(self.en_vocab_path, self.en_raw_path, en_tokenizer)
 
         print("Translate raw data to numbers using the vocabulary")
         if not gfile.Exists(self.fr_ids_path):
-            self.data_to_token_ids(self.fr_raw_path, self.fr_ids_path, self.fr_vocab_path, tokenizer)
+            self.data_to_token_ids(self.fr_raw_path, self.fr_ids_path, self.fr_vocab_path, fr_tokenizer)
         if not gfile.Exists(self.en_ids_path):
-            self.data_to_token_ids(self.en_raw_path, self.en_ids_path, self.en_vocab_path, tokenizer)
+            self.data_to_token_ids(self.en_raw_path, self.en_ids_path, self.en_vocab_path, en_tokenizer)
         print("finished")
 
 
@@ -282,7 +290,7 @@ if __name__ == "__main__":
     print("English data size %d" % len(df.en_data))
     print("French data size %d" % len(df.fr_data))
 
-    ([en, fr], _) = next(df.produce())
+    ([en, fr], _, _) = next(df.produce())
     print("Requested batch size: %d" % 10)
     print("English batch size %d" % len(en))
     print("French batch size %d" % len(fr))
