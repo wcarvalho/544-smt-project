@@ -26,8 +26,7 @@ class MyTensorBoard(TensorBoard):
         self.model.save(saved_weights, overwrite=True)
         self.smt.load_weights(saved_weights)
 
-        translations = test_translation(self.smt, self.test_feeder, self.FLAGS, nbatches=20, search_method=1)
-
+        _ = test_translation(self.smt, self.test_feeder, self.FLAGS, nbatches=2, search_method=1)
 
         try:
             os.remove(saved_weights)

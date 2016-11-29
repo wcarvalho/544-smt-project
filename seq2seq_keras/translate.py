@@ -48,7 +48,6 @@ def create_model(vocab_size, en_length, fr_length, hidden_dim):
     h = stacked_lstm(s, hidden_dim, False, False, "hidden_h", FLAGS.num_layers)
     c = RepeatVector(fr_length, name='repeated_hidden_c')(h)
     fr = Input(shape=(fr_length,), name='fr_input_y')
-    # fr_one_hot = Lambda(lambda x : K.one_hot(K.cast(x,'int32'), FLAGS.vocab_size), name="fr_input_y_one_hot")(fr)
     fr_encode = Embedding(vocab_size, FLAGS.embedding_size, input_length=fr_length, mask_zero=False, name='fr_embed_s')(fr)
     decode_input = merge([fr_encode, c], mode='concat', name='y_cat_c')
     z = stacked_lstm(decode_input, hidden_dim, True, False, "hidden_z", FLAGS.num_layers)
@@ -67,17 +66,10 @@ def train_auto(FLAGS):
                               max_num_samples=FLAGS.max_train_data_size,
                               offset=FLAGS.offset)
 
-    # test_feeder = DataFeeder(data_dir=FLAGS.data_dir,
-    #                          prefix="newstest2013",
-    #                          vocab_size=FLAGS.vocab_size)
-
     en_length, fr_length, hidden_dim = FLAGS.en_length, FLAGS.fr_length, FLAGS.hidden_dim
-    #source, target = train_feeder.get_batch(FLAGS.max_train_data_size, en_length=en_length, fr_length=fr_length)
-    #source, target = np.asarray(source), np.asarray(target)
-    #target_output = np.expand_dims(target, -1)
 
     model_train = create_model(FLAGS.vocab_size, en_length, fr_length, hidden_dim)
-    model_train.compile(optimizer=rmsprop(lr=0.0001, rho=0.9, epsilon=1e-08, decay=0.0),
+    model_train.compile(optimizer=rmsprop(lr=0.005, rho=0.9, epsilon=1e-08, decay=0.0),
                         loss='sparse_categorical_crossentropy',
                         sample_weight_mode="temporal")
     print(model_train.summary())
@@ -87,13 +79,8 @@ def train_auto(FLAGS):
     if FLAGS.weights:
         model_train.load_weights(FLAGS.weights)
 
-    # tensorboard callback
     tb_callback = MyTensorBoard(smt=tester, log_dir='../logs', histogram_freq=0, write_graph=False, write_images=False, flags=FLAGS)
-    # check point callback
-    # cp_callback = ModelCheckpoint(filepath="../logs/weights.{epoch:02d}-{val_loss:.2f}.hdf5",
-    #                               monitor='val_loss',
-    #                               verbose = 0,
-    #                               mode="auto")
+
     model_train.fit_generator(train_feeder.produce(FLAGS.batch_size), samples_per_epoch=train_feeder.get_size(),
                               nb_epoch=FLAGS.epochs, callbacks=[tb_callback])
 
