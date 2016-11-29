@@ -23,16 +23,12 @@ For questions regarding the project, please leave comments or pull requests to:
 
 """
 
-import os
-import sys
-import numpy as np
 from keras.layers import RepeatVector, Input, merge
-from keras.layers.core import Dense, Lambda
+from keras.layers.core import Dense
 from keras.layers.embeddings import Embedding
-from keras.layers.recurrent import LSTM
 from keras.layers.wrappers import TimeDistributed
 from keras.models import Model
-from keras.callbacks import TensorBoard, ModelCheckpoint
+from keras.optimizers import rmsprop
 
 import tensorflow as tf
 sess = tf.Session()
@@ -81,7 +77,8 @@ def train_auto(FLAGS):
     #target_output = np.expand_dims(target, -1)
 
     model_train = create_model(FLAGS.vocab_size, en_length, fr_length, hidden_dim)
-    model_train.compile(optimizer='rmsprop', loss='sparse_categorical_crossentropy',
+    model_train.compile(optimizer=rmsprop(lr=0.0001, rho=0.9, epsilon=1e-08, decay=0.0),
+                        loss='sparse_categorical_crossentropy',
                         sample_weight_mode="temporal")
     print(model_train.summary())
 
