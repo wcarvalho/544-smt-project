@@ -154,7 +154,7 @@ if __name__ == "__main__":
     parser.add_argument("--steps_per_checkpoint", type=int, default=200, help="How many training steps to do per checkpoint.")
     parser.add_argument("--decode", action='store_true', default=False, help="Set for interactive decoding.")
     parser.add_argument("--plot_name", type=str, help="base name for plots")
-    parser.add_argument("--weights", type=str, help="weights file to load weights")
+    parser.add_argument("-w", "--weights", type=str, help="weights file to load weights")
     parser.add_argument("--validation_frequency", type=int, help="how often to do validation", default=1000)
     parser.add_argument("--save_frequency", type=int, help="how often to do validation", default=5000)
     parser.add_argument("-e", "--epochs", type=int, help="how often to do validation", default=5)
