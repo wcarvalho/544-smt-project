@@ -44,6 +44,7 @@ from data_feeder import *
 
 from tester import SMT, stacked_lstm
 from callbacks import MyTensorBoard
+from testing import test_translation
 
 def create_model(vocab_size, en_length, fr_length, hidden_dim):
     en = Input(shape=(en_length,), name='en_input_w')
@@ -103,42 +104,22 @@ def train_auto(FLAGS):
 # FIXME
 # * how will we give input to decoder? text file? command line?
 def decode(FLAGS):
-    vocab_size = FLAGS.vocab_size
-    embedding_size = FLAGS.embedding_size
+    
+    tester = SMT(FLAGS.en_length,
+                FLAGS.hidden_dim,
+                FLAGS.vocab_size,
+                FLAGS.vocab_size,
+                FLAGS.embedding_size,
+                FLAGS.num_layers,
+                FLAGS.batch_size)
+
+    tester.load_weights(FLAGS.weights)
 
     test_feeder = DataFeeder(data_dir=FLAGS.data_dir,
-                                         prefix="newstest2013",
-                                         vocab_size=vocab_size)
+                             prefix="newstest2013",
+                             vocab_size=FLAGS.vocab_size)
 
-    en_length = FLAGS.en_length
-    hidden_dim = FLAGS.hidden_dim
-    beam_size = FLAGS.beam_size
-    saved_weights = FLAGS.weights
-    max_beam_search = FLAGS.max_beam_search
-
-    tester = SMT(en_length, hidden_dim, vocab_size, vocab_size, embedding_size)
-    tester.load_weights(saved_weights)
-
-    for i in range(10):
-        en_indices, _ = test_feeder.get_batch(1, en_length=en_length)
-
-        en_indices = np.array(en_indices)
-        fr_indix_options = tester.beam_search(en_indices, test_feeder, beam_size, max_beam_search, verbosity=FLAGS.verbosity)
-
-        en_indices=en_indices[0]
-        en_sent = test_feeder.feats2words(en_indices)
-        print ("en_sent", en_sent)
-        for option in fr_indix_options:
-            fr_sent = test_feeder.feats2words(option, "fr")
-            print "\tfr_sent opt", fr_sent
-        # en_sent = indices2sent(en_indices, test_feeder.en_indx2vocab)
-        # fr_sent = indices2sent(fr_indices, test_feeder.fr_indx2vocab)
-        # print en_indices, en_sent
-        # print fr_indices, fr_sent
-        break
-    # print (final_translation_index_list)
-        # output is a french sentence which will be used
-    # once done,
+    translations = test_translation(tester, test_feeder, FLAGS, nbatches=10, search_method=2)
 
 
 def indices2sent(indices, indx2vocab):
@@ -153,7 +134,7 @@ if __name__ == "__main__":
     parser.add_argument("--learning_rate", type=float, default=0.5, help="Learning rate.")
     parser.add_argument("--learning_rate_decay_factor", type=float, default=0.99, help="Learning rate decays by this much.")
     parser.add_argument("--max_gradient_norm", type=float, default=5.0, help="Clip gradients to this norm.")
-    parser.add_argument("--batch_size", type=int, default=1024, help="Batch size to use during training.")
+    parser.add_argument("--batch_size", type=int, default=32, help="Batch size to use during training.")
     
     parser.add_argument("--beam_size", type=int, default=50, help="Batch size to use during training.")
     parser.add_argument("--max_beam_search", type=int, default=100, help="Max iterations in beam search.")

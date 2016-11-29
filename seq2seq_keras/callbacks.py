@@ -3,6 +3,7 @@ import os
 import numpy as np
 from tester import SMT
 from data_feeder import DataFeeder
+from testing import test_translation
 
 class MyTensorBoard(TensorBoard):
 
@@ -23,43 +24,9 @@ class MyTensorBoard(TensorBoard):
 
         saved_weights = "temp.ckpt"
         self.model.save(saved_weights, overwrite=True)
+        self.smt.load_weights(saved_weights)
 
-        vocab_size = self.FLAGS.vocab_size
-        embedding_size = self.FLAGS.embedding_size
-
-        en_length = self.FLAGS.en_length
-        hidden_dim = self.FLAGS.hidden_dim
-        beam_size = self.FLAGS.beam_size
-
-        tester = self.smt
-        tester.load_weights(saved_weights)
-
-        for i in range(20):
-            en_sentences, cr_fr_sentences = self.test_feeder.get_batch(self.FLAGS.batch_size, en_length=en_length)
-            for i in en_sentences: i.reverse()
-            en_sentences = np.array(en_sentences)
-            cr_fr_sentences = np.array(cr_fr_sentences)
-            fr_sentences = tester.greedy_search(en_sentences, self.FLAGS.fr_length, self.FLAGS.verbosity)
-            for si in range(self.FLAGS.batch_size):
-                en_sentence = en_sentences[si]
-                fr_sentence = fr_sentences[si]
-                cr_fr_sentence = cr_fr_sentences[si]
-
-                en_sen = f2w(self.test_feeder, en_sentence)
-                fr_sen = f2w(self.test_feeder, fr_sentence, lan="fr")
-                cr_fr_sen = f2w(self.test_feeder, cr_fr_sentence, lan="fr")
-                
-                print("\nen: "+" ".join(en_sen))
-                print("--\nfr len=%d: " % len(fr_sen) + " ".join(fr_sen))
-                print("--\ncr fr len=%d: " % len(cr_fr_sen) + " ".join(cr_fr_sen))
-            # fr_l = fr_length(cr_fr_sentence[0])
-
-
-            # fr_sentence = tester.beam_search(en_sentence, self.test_feeder, beam_size=beam_size, max_search=fr_l, verbosity=self.FLAGS.verbosity)
-
-            # for fr in fr_sentence:
-            #     fr_str = self.test_feeder.feats2words(fr, language='fr', skip_special_tokens=True)
-            #     print("fr len=%d: " % fr_length(fr_str) + " ".join(fr_str))
+        translations = test_translation(self.smt, self.test_feeder, self.FLAGS, nbatches=20, search_method=1)
 
         try:
             os.remove(saved_weights)
@@ -85,8 +52,6 @@ class MyTensorBoard(TensorBoard):
 
         if (batch + 1) % self.FLAGS.validation_frequency == 0:
             self.test()
-
-def f2w(feeder, sen, lan="en"): return feeder.feats2words(sen, language=lan, skip_special_tokens=True)
 
 def fr_length(fr_indices):
     i = 0

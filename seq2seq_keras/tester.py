@@ -91,7 +91,9 @@ class SMT(object):
     else:
       indx_array = word_indx
 
+
     embedded = self.fr_embedder.predict(indx_array)
+    # make B X 1 X D
     recurrent_h = np.expand_dims(self.recurrent_h, 1)
 
     batch = np.concatenate([recurrent_h,embedded],axis=-1)
@@ -100,13 +102,10 @@ class SMT(object):
     return batch.astype(np.float32)
 
   def decode(self, word_indx = None):
-    # if word_indx is None: batch = self._make_initial_batch()
     if word_indx is None: batch = self._make_regular_batch(np.array([1]))
     else: batch = self._make_regular_batch(word_indx)
-    # print ("batch.shape", batch.shape)
-    batch = np.reshape(batch, (self.batch_size, 1, self.embedding_size+self.hidden_dim))
-    probabilties = self.decoder.predict(batch)
-    return probabilties, self.get_decoder_rnn_states()
+    probabilities = self.decoder.predict(batch)
+    return probabilities, self.get_decoder_rnn_states()
 
   def copy_decode(self, word_indx = None):
     return copy.deepcopy(self.decode(word_indx))
@@ -124,41 +123,45 @@ class SMT(object):
         input = states[layer.name]
         for i in range(len(input)):
           layer.states[i].assign(input[i]).eval()
-        
-
 
   def reset_states(self):
     # self.encoder.layers[2].reset_states()
     self.decoder.reset_states()
 
   def mass_decode(self, indices, states):
-    probabilties = []
+    probabilities = []
     post_states = []
 
     for i, s1 in zip(indices, states):
       self.set_decoder_rnn_states(s1)
       p, s2 = self.decode(i)
-      probabilties.append(p)
+      probabilities.append(p)
       post_states.append(s2)
 
-    return probabilties, post_states
+    return probabilities, post_states
 
   def beam_search(self, en_sentence, feeder, beam_size, max_search=100, verbosity=0):
     return en2fr_beam_search(self, feeder, en_sentence, beam_size, self.fr_vocab_size, max_search, verbosity)
 
   def greedy_search(self, en_sentence, length, verbosity=0):
     self.encode(en_sentence)
-    probabilties, weights = self.decode()
-    best_indices = np.zeros((len(probabilties), length), dtype=np.int)
-    update_best(best_indices, probabilties, 0)
+    probabilities, weights = self.decode()
+    best_indices = np.zeros((len(probabilities), length), dtype=np.int)
+    input = np.ones((len(probabilities)), dtype=np.int)
     
+    update_best(input, best_indices, probabilities, 0)
     for j in range(1, length):
-      probabilties, weights = self.decode(best_indices[:,j-1])
-      update_best(best_indices, probabilties, j)
+      probabilities, weights = self.decode(best_indices[:,j-1])
+      update_best(input, best_indices, probabilities, j)
     return best_indices
 
-def update_best(best, probabilties, j):
-  sorted_i = np.argsort(probabilties, axis=1, kind = 'heapsort')
-  best[:,j] = sorted_i[:, -1]
+def update_best(input, best, probabilities, j):
+  sorted_i = np.argsort(probabilities, axis=1, kind = 'heapsort')
+  for r, row in enumerate(sorted_i):
+    for i in range(row.shape[0]-1, 0, -1):
+      if row[i] != 3: 
+        input[r]=row[i]
+        break
+  best[:,j] = input
 
 def not_implemented(name): return "'"+name+"' has not yet been implemented!"
