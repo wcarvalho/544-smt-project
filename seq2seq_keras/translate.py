@@ -69,7 +69,7 @@ def train_auto(FLAGS):
     en_length, fr_length, hidden_dim = FLAGS.en_length, FLAGS.fr_length, FLAGS.hidden_dim
 
     model_train = create_model(FLAGS.vocab_size, en_length, fr_length, hidden_dim)
-    model_train.compile(optimizer=rmsprop(lr=0.005, rho=0.9, epsilon=1e-08, decay=0.0),
+    model_train.compile(optimizer=rmsprop(lr=0.0005),
                         loss='sparse_categorical_crossentropy',
                         sample_weight_mode="temporal")
     print(model_train.summary())
