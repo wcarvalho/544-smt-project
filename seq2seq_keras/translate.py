@@ -103,7 +103,7 @@ def decode(FLAGS):
                              prefix="newstest2013",
                              vocab_size=FLAGS.vocab_size)
 
-    translations = test_translation(tester, test_feeder, FLAGS, nbatches=10, search_method=2)
+    translations = test_translation(tester, test_feeder, FLAGS, nbatches=10, search_method=1)
 
 
 def indices2sent(indices, indx2vocab):

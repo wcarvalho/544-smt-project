@@ -157,11 +157,11 @@ class SMT(object):
 
 def update_best(input, best, probabilities, j):
   sorted_i = np.argsort(probabilities, axis=1, kind = 'heapsort')
-  for r, row in enumerate(sorted_i):
-    for i in range(row.shape[0]-1, 0, -1):
-      if row[i] != 3: 
-        input[r]=row[i]
-        break
-  best[:,j] = input
+  # for r, row in enumerate(sorted_i):
+  #   for i in range(row.shape[0]-1, 0, -1):
+  #     if row[i] != 10:
+  #       input[r]=row[i]
+  #       break
+  best[:,j] = sorted_i[:,-1]
 
 def not_implemented(name): return "'"+name+"' has not yet been implemented!"
