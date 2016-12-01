@@ -137,12 +137,12 @@ def tsne(FLAGS):
                              prefix="newstest2013",
                              vocab_size=FLAGS.vocab_size)
     embedding = model.predict(range(FLAGS.vocab_size)).squeeze()
-    tsne = TSNE(n_components=2, random_state=0, verbose=1, early_exaggeration=3)
+    tsne = TSNE(n_components=2, random_state=0, verbose=1, early_exaggeration=1)
     print("running t-sne")
     proj = tsne.fit_transform(embedding)
     print("finished")
     print("start plotting t-sne")
-    plot_tsne(features=proj, dict=feeder.en_vocab_inv, num_words=2000,
+    plot_tsne(features=proj, dict=feeder.en_vocab_inv, num_words=10000,
               output_path="../logs/embeding.png")
     print("finished")
 
