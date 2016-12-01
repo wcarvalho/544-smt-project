@@ -27,8 +27,11 @@ from keras.layers import RepeatVector, Input, merge
 from keras.layers.core import Dense
 from keras.layers.embeddings import Embedding
 from keras.layers.wrappers import TimeDistributed
-from keras.models import Model
+from keras.models import Model, Sequential
 from keras.optimizers import rmsprop
+from sklearn.manifold import TSNE
+import numpy as np
+import pylab
 
 import tensorflow as tf
 sess = tf.Session()
@@ -103,7 +106,45 @@ def decode(FLAGS):
                              prefix="newstest2013",
                              vocab_size=FLAGS.vocab_size)
 
-    translations = test_translation(tester, test_feeder, FLAGS, nbatches=10, search_method=1)
+    _ = test_translation(tester, test_feeder, FLAGS, nbatches=10, search_method=1)
+
+
+def plot_tsne(features, dict, num_words=1000, output_path="embedding.png"):
+    pylab.figure(figsize=(50, 50), dpi=100)
+    max_x = np.amax(features, axis=0)[0]
+    max_y = np.amax(features, axis=0)[1]
+    pylab.xlim((-max_x, max_x))
+    pylab.ylim((-max_y, max_y))
+    pylab.scatter(features[:, 0], features[:, 1])
+    for idx in range(min(len(features), num_words)):
+        word = dict[idx]
+        ords = [ord(c) for c in word]
+        if max(ords) > 128:
+            continue
+        x = features[idx, 0]
+        y = features[idx, 1]
+        pylab.annotate(word, (x, y))
+    pylab.savefig(output_path)
+
+
+def tsne(FLAGS):
+    model = Sequential()
+    model.add(Embedding(FLAGS.vocab_size,
+                  FLAGS.embedding_size,
+                  name='en_embed_s'))
+    model.load_weights(FLAGS.weights, by_name=True)
+    feeder = DataFeeder(data_dir=FLAGS.data_dir,
+                             prefix="newstest2013",
+                             vocab_size=FLAGS.vocab_size)
+    embedding = model.predict(range(FLAGS.vocab_size)).squeeze()
+    tsne = TSNE(n_components=2, random_state=0, verbose=1, early_exaggeration=3)
+    print("running t-sne")
+    proj = tsne.fit_transform(embedding)
+    print("finished")
+    print("start plotting t-sne")
+    plot_tsne(features=proj, dict=feeder.en_vocab_inv, num_words=2000,
+              output_path="../logs/embeding.png")
+    print("finished")
 
 
 def indices2sent(indices, indx2vocab):
@@ -143,6 +184,7 @@ if __name__ == "__main__":
     parser.add_argument("--save_frequency", type=int, help="how often to do validation", default=5000)
     parser.add_argument("-e", "--epochs", type=int, help="how often to do validation", default=5)
     parser.add_argument("-v", "--verbosity", type=int, default=0)
+    parser.add_argument("-t", "--tsne", type=int, default=0)
 
     FLAGS = parser.parse_args()
     print(FLAGS)
@@ -152,5 +194,7 @@ if __name__ == "__main__":
             from keras.utils.visualize_util import plot
         if FLAGS.decode:
             decode(FLAGS)
+        elif FLAGS.tsne:
+            tsne(FLAGS)
         else:
             train_auto(FLAGS)
