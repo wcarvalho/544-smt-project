@@ -1,15 +1,15 @@
-# 544-smt-project (Group #51 Neural Machine Translation)
+# 544-smt-project 
+
+##Group #51 Neural Machine Translation
 
 This is a Keras implementation of RNN Encoder-Decoder, written for as a final project for CSCI-544.
 
-As we started modifying code from a Tensorflow tutorial, some of the routines such as command line options
-and basic file reading routines might resemble the original tutorial code, however, we re-implemented most
-of the key parts namely:
+We built our model from basic Keras and Tensorflow building blocks, without using any pre-written sequence to sequence library. Our code is organized as follows:
 
-1. Our training model is completely re-written with Keras.
-2. The WMT dataset is processed with DataFeed, an self sufficient class that handles processing, reading
-   and producing batches from the data.
-3. A beam search is performed to sample the output probability distribution to get reasonable outcome.
+1. `translate.py` is the entry point and takes many command line options.
+2. `data_feeder.py` contains a DataFeeder class, a self sufficient class that handles processing, reading and producing batches from the data.
+3. `callbacks.py` contains callback functions that are used in training sessions.
+3. `beam_graph.py`, `beam_search.py`, `tester.py` and `testing.py` are related to the testing model and searching algorithms used in decoding.
 
 Group members (in alphabetic order):
 
