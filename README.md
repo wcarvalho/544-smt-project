@@ -1,4 +1,4 @@
-# 544-smt-project
+# 544-smt-project (Group #51 Neural Machine Translation)
 
 This is a Keras implementation of RNN Encoder-Decoder, written for as a final project for CSCI-544.
 
