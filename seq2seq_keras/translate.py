@@ -60,6 +60,36 @@ def create_model(vocab_size, en_length, fr_length, hidden_dim):
         plot(model, to_file=FLAGS.plot_name+'.png', show_shapes=True)
     return model
 
+def create_test_encoder(vocab_size, en_length, hidden_dim):
+    en = Input(shape=(en_length,), name='en_input_w')
+    s = Embedding(vocab_size, FLAGS.embedding_size, input_length=en_length, mask_zero=True, name='en_embed_s')(en)
+    h = stacked_lstm(s, hidden_dim, False, False, "hidden_h", FLAGS.num_layers)
+    c = RepeatVector(1, name='repeated_hidden_c')(h)
+    encoder = Model(input=en, output=h)
+    # model = Model(input=[en, fr], output=p)
+    if FLAGS.plot_name:
+        # plot(model, to_file=FLAGS.plot_name+'.png', show_shapes=True)
+        plot(encoder, to_file=FLAGS.plot_name + '_encoder.png', show_shapes=True)
+    return encoder
+
+
+def create_test_decoder(vocab_size, en_length, hidden_dim):
+    h = Input(shape=(hidden_dim,), name='en_input_w')
+    c = RepeatVector(1, name='repeated_hidden_c')(h)
+    fr = Input(shape=(1,), name='fr_input_y')
+    fr_encode = Embedding(vocab_size, FLAGS.embedding_size, name='fr_embed_s')(fr)
+    decode_input = merge([fr_encode, c], mode='concat', name='y_cat_c')
+    z = stacked_lstm(decode_input, hidden_dim, True, False, "hidden_z", FLAGS.num_layers)
+    p = TimeDistributed(Dense(vocab_size, activation='softmax'), name='prob')(z)
+    decoder = Model(input=[h, fr], output=p)
+    # model = Model(input=[en, fr], output=p)
+    if FLAGS.plot_name:
+        # plot(model, to_file=FLAGS.plot_name+'.png', show_shapes=True)
+        # plot(encoder, to_file=FLAGS.plot_name + '_encoder.png', show_shapes=True)
+        plot(decoder, to_file=FLAGS.plot_name + '_decoder.png', show_shapes=True)
+    return decoder
+
+
 
 def train_auto(FLAGS):
     # Prepare WMT data
@@ -91,22 +121,41 @@ def train_auto(FLAGS):
 # FIXME
 # * how will we give input to decoder? text file? command line?
 def decode(FLAGS):
-    
-    tester = SMT(FLAGS.en_length,
-                FLAGS.hidden_dim,
-                FLAGS.vocab_size,
-                FLAGS.vocab_size,
-                FLAGS.embedding_size,
-                FLAGS.num_layers,
-                FLAGS.batch_size)
 
-    tester.load_weights(FLAGS.weights)
+    encoder = create_test_encoder(FLAGS.vocab_size,
+                              FLAGS.en_length,
+                              FLAGS.hidden_dim)
+
+    decoder = create_test_decoder(FLAGS.vocab_size,
+                              FLAGS.en_length,
+                              FLAGS.hidden_dim)
+
+    encoder.load_weights(FLAGS.weights, by_name=True)
+    decoder.load_weights(FLAGS.weights, by_name=True)
 
     test_feeder = DataFeeder(data_dir=FLAGS.data_dir,
                              prefix="newstest2013",
                              vocab_size=FLAGS.vocab_size)
 
-    _ = test_translation(tester, test_feeder, FLAGS, nbatches=10, search_method=1)
+    (ens, frs) = test_feeder.get_batch(batch_size=64, en_length=FLAGS.en_length, fr_length=FLAGS.fr_length)
+
+    for en, fr in zip(ens, frs):
+        en = np.asarray(en)
+        # en.reshape((np.new_axis,FLAGS.en_length))
+        en = en[None,:]
+        c = encoder.predict(en)
+        curr = np.asarray([GO_ID])
+        curr = curr[None,:]
+        output = []
+        for i in range(FLAGS.fr_length):
+            p = decoder.predict([c, curr])
+            next = np.argmax(p)
+            output.append(next)
+            curr = next
+        print output
+
+
+    print("finished")
 
 
 def plot_tsne(features, dict, num_words=1000, output_path="embedding.png"):
