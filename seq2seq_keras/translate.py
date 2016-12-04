@@ -146,13 +146,33 @@ def decode(FLAGS):
         c = encoder.predict(en)
         curr = np.asarray([GO_ID])
         curr = curr[None,:]
-        output = []
-        for i in range(FLAGS.fr_length):
-            p = decoder.predict([c, curr])
-            next = np.argmax(p)
-            output.append(next)
-            curr = next
-        print output
+        cands = range(FLAGS.vocab_size)
+        best_prob = 0
+        # best_output = []
+        for k in range(500):
+            if k % 10 == 0:
+                print k, best_prob
+            output = []
+            poutput = []
+            for i in range(FLAGS.fr_length):
+                p = decoder.predict([c, curr])
+                p = list(p[0,0])
+                p = p / sum(p)
+                next = np.random.choice(cands, p=p)
+                p_next = p[next]
+                output.append(next)
+                poutput.append(p_next)
+                curr = np.asarray([next])[None,:]
+                if curr == EOS_ID:
+                    break
+            prob = np.sum(np.exp(poutput))
+            if prob > best_prob:
+                best_output = output
+                best_prob = prob
+        best_output = test_feeder.feats2words(best_output, language='fr', skip_special_tokens=True)
+        gt = test_feeder.feats2words(fr, language='fr', skip_special_tokens=True)
+        print(" ".join(best_output))
+        print(" ".join(gt))
 
 
     print("finished")
