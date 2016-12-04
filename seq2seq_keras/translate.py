@@ -61,9 +61,9 @@ def create_model(vocab_size, en_length, fr_length, hidden_dim):
     return model
 
 def create_test_encoder(vocab_size, en_length, hidden_dim):
-    en = Input(shape=(en_length,), name='en_input_w')
+    en = Input(batch_shape=(1,en_length,), name='en_input_w')
     s = Embedding(vocab_size, FLAGS.embedding_size, input_length=en_length, mask_zero=True, name='en_embed_s')(en)
-    h = stacked_lstm(s, hidden_dim, False, False, "hidden_h", FLAGS.num_layers)
+    h = stacked_lstm(s, hidden_dim, return_sequences=False, stateful=True, name="hidden_h", N=FLAGS.num_layers)
     c = RepeatVector(1, name='repeated_hidden_c')(h)
     encoder = Model(input=en, output=h)
     # model = Model(input=[en, fr], output=p)
@@ -74,18 +74,16 @@ def create_test_encoder(vocab_size, en_length, hidden_dim):
 
 
 def create_test_decoder(vocab_size, en_length, hidden_dim):
-    h = Input(shape=(hidden_dim,), name='en_input_w')
+    h = Input(batch_shape=(1,hidden_dim,), name='en_input_w')
     c = RepeatVector(1, name='repeated_hidden_c')(h)
-    fr = Input(shape=(1,), name='fr_input_y')
+    fr = Input(batch_shape=(1,1,), name='fr_input_y')
     fr_encode = Embedding(vocab_size, FLAGS.embedding_size, name='fr_embed_s')(fr)
     decode_input = merge([fr_encode, c], mode='concat', name='y_cat_c')
-    z = stacked_lstm(decode_input, hidden_dim, True, False, "hidden_z", FLAGS.num_layers)
-    p = TimeDistributed(Dense(vocab_size, activation='softmax'), name='prob')(z)
+    z = stacked_lstm(decode_input, hidden_dim, return_sequences=True, stateful=True, name="hidden_z", N=FLAGS.num_layers)
+    p = Dense(vocab_size, activation='softmax', name='prob')(z)
     decoder = Model(input=[h, fr], output=p)
     # model = Model(input=[en, fr], output=p)
     if FLAGS.plot_name:
-        # plot(model, to_file=FLAGS.plot_name+'.png', show_shapes=True)
-        # plot(encoder, to_file=FLAGS.plot_name + '_encoder.png', show_shapes=True)
         plot(decoder, to_file=FLAGS.plot_name + '_decoder.png', show_shapes=True)
     return decoder
 
@@ -119,7 +117,7 @@ def train_auto(FLAGS):
 
 
 
-def decode_random_search(en, encoder, decoder, nitr=100):
+def decode_random_search(en, encoder, decoder, n_trial=100):
     en = np.asarray(en)[None, :]
     c = encoder.predict(en)
     curr = np.asarray([GO_ID])
@@ -127,8 +125,8 @@ def decode_random_search(en, encoder, decoder, nitr=100):
     import sys
     best_prob = -sys.maxint
     best_output = []
-    for k in range(nitr):
-        if k % 100 == 0:
+    for k in range(n_trial):
+        if k % 10 == 0:
             print k, best_prob
         output = []
         prob = []
@@ -170,14 +168,14 @@ def decode(FLAGS):
     (ens, frs) = test_feeder.get_batch(batch_size=64, en_length=FLAGS.en_length, fr_length=FLAGS.fr_length)
 
     for en, fr in zip(ens, frs):
-        fr_pred = decode_random_search(en, encoder, decoder)
+        fr_pred = decode_random_search(en, encoder, decoder, n_trial=200)
         fr_pred = test_feeder.feats2words(fr_pred, language='fr', skip_special_tokens=True)
         en = test_feeder.feats2words(en, language='en', skip_special_tokens=True)
         fr = test_feeder.feats2words(fr, language='fr', skip_special_tokens=True)
         print("--------------------------------------")
         print("en: " + " ".join(en))
         print("fr: " + " ".join(fr))
-        print("||||" + " ".join(fr_pred))
+        print("||: " + " ".join(fr_pred))
 
 
     print("finished")
